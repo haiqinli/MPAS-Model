@@ -824,6 +824,7 @@
 			<var name="rniblten"/>
 			<var name="rthratensw"/>
 			<var name="rthratenlw"/>
+			<var name="vcpool" packages="cu_grell_freitas_in"/>
 			<var name="isltyp"/>
 			<var name="soilf"/>
 			<var name="ivgtyp"/>
@@ -1099,6 +1100,8 @@
                         <var name="swupt"/>
 			<var name="rainc"/>
 			<var name="rainnc"/>
+			<var name="vcpool"/>
+			<var name="cldfrac_cu"/>
 			<var name="refl10cm"/>
 			<var name="refl10cm_max"/>
 			<var name="refl10cm_1km"/>
@@ -2634,6 +2637,10 @@
 
 	       <var name="cldfrac_cu" type="real" dimensions="nVertLevels nCells Time" units="unitless"
                      description="cloud fraction in the Grell-Freitas cloud scheme"
+                     packages="cu_grell_freitas_in"/>
+
+               <var name="vcpool" type="real" dimensions="nCells Time" units="m s^{-1}"
+                     description="Cold pool gust front horizontal speed "
                      packages="cu_grell_freitas_in"/>
 
 

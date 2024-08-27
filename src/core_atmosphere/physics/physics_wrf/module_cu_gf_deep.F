@@ -38,7 +38,7 @@ MODULE module_cu_gf_deep
 !> still 16 ensembles for clousres
      integer, parameter:: maxens3=16
 !>  which coldpool version to use
-     integer, parameter:: icoldpool=0
+     integer, parameter:: icoldpool=2
 
 !---meltglac-------------------------------------------------
  logical, parameter :: melt_glac      = .true.  !<- turn on/off ice phase/melting
@@ -138,6 +138,7 @@ contains
               ,chem3d        &
               ,wetdpc_deep   &
               ,do_smoke_transport   &
+              ,vcpool        &
               ,rand_mom      &  ! for stochastics mom, if temporal and spatial patterns exist
               ,rand_vmas     &  ! for stochastics vertmass, if temporal and spatial patterns exist
               ,rand_clos     &  ! for stochastics closures, if temporal and spatial patterns exist
@@ -182,7 +183,7 @@ contains
         cnvwt,outu,outv,outt,outq,outqc,cupclw
      real(kind=kind_phys),    dimension (its:ite)                      &
         ,intent (out    )                   ::                         &
-        frh_out
+        frh_out, vcpool
      real(kind=kind_phys),    dimension (its:ite)                      &
         ,intent (inout  )                   ::                         &
         pre,xmb_out
@@ -448,7 +449,8 @@ contains
 
      real(kind=kind_phys),    dimension (its:ite,kts:kte) ::  p_liq_ice,melting_layer,melting
 ! coldpool
-     real(kind=kind_phys),    dimension (its:ite) ::  beta_x,vcpool, wlpool,umcl,vmcl,slope_pool
+     !real(kind=kind_phys),    dimension (its:ite) ::  beta_x,vcpool, wlpool,umcl,vmcl,slope_pool
+     real(kind=kind_phys),    dimension (its:ite) ::  beta_x, wlpool,umcl,vmcl,slope_pool
      real(kind=kind_phys),    dimension (its:ite,kts:kte) ::  buoysrc,dellat_d
      real(kind=kind_phys) :: aux,mcl_speed,total_dz,mx_buoy2,h_env
 
@@ -2303,7 +2305,8 @@ contains
           endif
       enddo
       !-----downdraft_cold_pool---------------
-      if (icoldpool > 0 .and. imid ==0) then
+      !if (icoldpool > 0 .and. imid ==0) then
+      if (icoldpool == 1 .and. imid ==0) then
       ! --- adding the gust front horizontal speed to the 2-d MCL wind
       ! --- only magnitude is augmented, direction is kept the same
       do i=its,itf

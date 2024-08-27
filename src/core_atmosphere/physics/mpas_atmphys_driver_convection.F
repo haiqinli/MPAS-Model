@@ -176,6 +176,7 @@
        if(.not.allocated(qccu_p)         ) allocate(qccu_p(ims:ime,kms:kme,jms:jme)     )
        if(.not.allocated(qicu_p)         ) allocate(qicu_p(ims:ime,kms:kme,jms:jme)     )
 
+       if(.not.allocated(vcpool_p)       ) allocate(vcpool_p(ims:ime,jms:jme)           )
        if(.not.allocated(cldfrac_cu_p)   ) allocate(cldfrac_cu_p(ims:ime,kms:kme,jms:jme))
 
     case ("cu_kain_fritsch")
@@ -323,6 +324,7 @@
        if(allocated(qccu_p)         ) deallocate(qccu_p         )
        if(allocated(qicu_p)         ) deallocate(qicu_p         )
 
+       if(allocated(vcpool_p)       ) deallocate(vcpool_p       )
        if(allocated(cldfrac_cu_p)   ) deallocate(cldfrac_cu_p   )
 
     case ("cu_kain_fritsch")
@@ -519,7 +521,7 @@
              pbl_scheme      = pbl_scheme             , maxmf         = maxmfbl_p       , &
              qc3d            = qc_p                   , qi3d          = qi_p            , &
              qc_cu           = qccu_p                 , qi_cu         = qicu_p          , &
-             cldfrac_cu      = cldfrac_cu_p                                             , &
+             cldfrac_cu      = cldfrac_cu_p           , vcpool_p      = vcpool_p        , &
              ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde      , &
              ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme      , &
              its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
@@ -651,7 +653,7 @@
  character(len=StrKIND),pointer:: convection_scheme
  integer,dimension(:),pointer:: kpbl,k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
  real(kind=RKIND),dimension(:),pointer  :: areaCell,meshDensity
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,vcpool
  real(kind=RKIND),dimension(:),pointer  :: gsw,hfx,qfx,xland
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:,:),pointer:: zgrid
@@ -717,6 +719,7 @@
        call mpas_pool_get_array(diag_physics,'ktop_deep'    ,ktop_deep    )
        call mpas_pool_get_array(diag_physics,'qc_cu'        ,qc_cu        )
        call mpas_pool_get_array(diag_physics,'qi_cu'        ,qi_cu        )
+       call mpas_pool_get_array(diag_physics,'vcpool'       ,vcpool       )
        call mpas_pool_get_array(diag_physics,'cldfrac_cu'   ,cldfrac_cu   )
 
        call mpas_pool_get_array(tend_physics,'rqvblten'  ,rqvblten  )
@@ -748,6 +751,7 @@
           kbcon_shallow_p(i,j) = kbcon_shallow(i)
           ktop_shallow_p(i,j)  = ktop_shallow(i)
           ktop_deep_p(i,j)     = ktop_deep(i)
+          vcpool_p(i,j)        = vcpool(i)
 
           do k = kts,kte
              qccu_p(i,k,j)      = qc_cu(k,i)
@@ -894,7 +898,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: convection_scheme
  integer,dimension(:),pointer:: k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,vcpool
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu
  real(kind=RKIND),dimension(:,:),pointer:: w0avg
@@ -941,6 +945,7 @@
        call mpas_pool_get_array(diag_physics,'qc_cu'        ,qc_cu        )
        call mpas_pool_get_array(diag_physics,'qi_cu'        ,qi_cu        )
        call mpas_pool_get_array(diag_physics,'cldfrac_cu'   ,cldfrac_cu   )
+       call mpas_pool_get_array(diag_physics,'vcpool'       ,vcpool       )
 
        call mpas_pool_get_array(tend_physics,'rucuten',rucuten)
        call mpas_pool_get_array(tend_physics,'rvcuten',rvcuten)
@@ -955,6 +960,7 @@
           kbcon_shallow(i) = kbcon_shallow_p(i,j)
           ktop_shallow(i)  = ktop_shallow_p(i,j)
           ktop_deep(i)     = ktop_deep_p(i,j)
+          vcpool(i)        = vcpool_p(i,j)
 
           do k = kts,kte
              qc_cu(k,i)    = qccu_p(i,k,j)

@@ -62,7 +62,7 @@ CONTAINS
               ,rthcuten,rqvcuten,rqccuten,rqicuten              &
               ,rucuten,rvcuten                                  &
               ,pbl_scheme, maxmf, qc3d, qi3d                    &
-              ,qc_cu, qi_cu, cldfrac_cu                         &
+              ,qc_cu, qi_cu, cldfrac_cu, vcpool_p               &
               ,ims, ime, jms, jme, kms,kme                      &
               ,ids, ide, jds, jde, kds,kde                      &
               ,its, ite, jts, jte, kts,kte)
@@ -113,7 +113,7 @@ CONTAINS
 !inout arguments:
  integer,dimension(ims:ime,jms:jme),intent(inout):: k22_shallow,kbcon_shallow,ktop_shallow
 
- real,dimension(ims:ime,jms:jme),intent(inout):: hbot,htop,raincv,pratec,xmb_total,xmb_shallow
+ real,dimension(ims:ime,jms:jme),intent(inout):: hbot,htop,raincv,pratec,xmb_total,xmb_shallow,vcpool_p
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: rthcuten,rqvcuten,rqccuten,rqicuten
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: rucuten,rvcuten
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout),optional:: gdc,gdc2
@@ -132,7 +132,7 @@ CONTAINS
  integer,dimension(its:ite):: kbcon,ktop,k22s,k22,kbcons,ktops,jmin,kbconm,ktopm,k22m,jminm
 
  real:: dp,dq,pahfs,pgeoh,pqhfl,zkhvfl,zrho,zws,psum,clwtot
- real,dimension(its:ite):: area_loc,dx_loc
+ real,dimension(its:ite):: area_loc,dx_loc,vcpool,vcpool_m
  real,dimension(its:ite):: xlandi,hfxi,qfxi
  real,dimension(its:ite):: xmb,xmbm,xmbs,xmb_dumm
  real,dimension(its:ite):: ccn
@@ -491,6 +491,7 @@ CONTAINS
               ,chem3d        &
               ,wetdpc_mid    &
               ,do_smoke_transport   &
+              ,vcpool_m      &
 !    the following should be set to zero if not available
               ,rand_mom      & ! for stochastics mom, if temporal and spatial patterns exist
               ,rand_vmas     & ! for stochastics vertmass, if temporal and spatial patterns exist
@@ -571,6 +572,7 @@ CONTAINS
               ,chem3d        &
               ,wetdpc_deep   &
               ,do_smoke_transport   &
+              ,vcpool        &
               ,rand_mom      &  ! for stochastics mom, if temporal and spatial patterns exist
               ,rand_vmas     &  ! for stochastics vertmass, if temporal and spatial patterns exist
               ,rand_clos     &  ! for stochastics closures, if temporal and spatial patterns exist
@@ -619,6 +621,7 @@ CONTAINS
           k22_shallow(i,j)   = k22m(i)
           kbcon_shallow(i,j) = kbconm(i)
           ktop_shallow(i,j)  = ktopm(i)
+          vcpool_p(i,j)      = vcpool(i)*frh_out(i)
        enddo
    endif
 

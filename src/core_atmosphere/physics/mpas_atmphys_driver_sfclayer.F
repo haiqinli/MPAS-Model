@@ -150,6 +150,8 @@
  if(.not.allocated(zol_p)   ) allocate(zol_p(ims:ime,jms:jme)   )
  if(.not.allocated(znt_p)   ) allocate(znt_p(ims:ime,jms:jme)   )
 
+ if(.not.allocated(sgsgustcu_p)) allocate(sgsgustcu_p(ims:ime,jms:jme) )
+
  if(config_frac_seaice) then
     if(.not.allocated(sst_p)      ) allocate(sst_p(ims:ime,jms:jme)      )
     if(.not.allocated(xice_p)     ) allocate(xice_p(ims:ime,jms:jme)     )
@@ -324,6 +326,8 @@
  if(allocated(zol_p)   ) deallocate(zol_p   )
  if(allocated(znt_p)   ) deallocate(znt_p   )
 
+ if(allocated(sgsgustcu_p)) deallocate(sgsgustcu_p   )
+
  if(config_frac_seaice) then
     if(allocated(sst_p)      ) deallocate(sst_p      )
     if(allocated(xice_p)     ) deallocate(xice_p     )
@@ -462,6 +466,13 @@
 
 !local pointers specific to mynn:
  real(kind=RKIND),dimension(:),pointer:: ch,qcg,snowh
+
+!----------------------------------------------------------------------------------------------------------------- 
+!-srf: local variables and pointers specific to GF cumulus scheme: 
+ character(len=StrKIND),pointer:: convection_scheme
+ real(kind=RKIND),dimension(:),pointer:: vcpool
+ real,parameter :: adjust_scale = 1.0
+ real :: wspd_local, gspd_local
 
 !local pointers specific to myj:
  real(kind=RKIND),dimension(:),pointer:: thz0, qz0, uz0, vz0, z0, akhs, akms, ct, tshltr, &
@@ -852,6 +863,59 @@
     case default
 
  end select sfclayer_select
+
+   !--------------------------------------------------------------------------
+  !-srf: coupling gust front speed from downdrafts with surface winds
+  !
+  call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+  convection_select: select case(convection_scheme)
+
+    case ("cu_grell_freitas")
+       !call mpas_pool_get_config(configs,'config_gf_gustf',config_gf_gustf)
+       !call mpas_pool_get_config(configs,'config_gf_cporg',config_gf_cporg)
+
+       !call mpas_pool_get_array(diag_physics,'v2d2'       ,v2d2    )
+
+       !if(config_gf_gustf == 1 .and. config_gf_cporg == 1) then
+         !--- coupled with the cold pool gustfront scheme
+         !call mpas_pool_get_dimension(state,'index_buoyx',index_buoyx)
+         !call mpas_pool_get_array(state,'scalars',scalars,time_lev)
+         !buoyx => scalars(index_buoyx,:,:)
+         !call mpas_pool_get_array(diag_physics,'u_gustfront'  ,u_gustfront )
+         !call mpas_pool_get_array(diag_physics,'v_gustfront'  ,v_gustfront )
+         call mpas_pool_get_array(diag_physics,'vcpool'  ,vcpool )
+
+         do j = jts,jte
+         do i = its,ite
+             !factor1 = min (mx_buoy2,buoyx(kts,i))
+             !factor1 = min (factor1,mx_buoy2)/mx_buoy2
+             !factor2 = atan((factor1-0.05*mx_buoy1/mx_buoy2)*5.)
+             !factor2 = max (0.0,min(factor2,1.0))
+
+             wspd_local = sqrt(u_p(i,kts,j)  *u_p(i,kts,j)   + v_p(i,kts,j)  *v_p(i,kts,j))
+             gspd_local = vcpool(i)
+
+             !--- adjust the gustiness speed to the resolved scale
+             gspd_local = max(adjust_scale * gspd_local, wspd_local )
+             !--- combining env + gust pool regions for continuity of the field
+             !--- where there is not cold pool, sgsgustcu_p -> wspd_local
+             !--- where there is     cold pool, sgsgustcu_p -> gspd_local
+             sgsgustcu_p(i,j) = wspd_local + gspd_local
+             !--- temporary for output only
+             !v2d2(i) =  sgsgustcu_p(i,j)
+
+             !--- subtract from the env wind speed, as the sgsgustcu_p will later be
+             !--- summed with "wspd" in routine 'sf_mynn_run'. See in this routine the line
+             !--- "wspd(i)=sqrt(wspd(i)*wspd(i)+wstar(i)*wstar(i)+vsgd*vsgd+sgsgustcu(i)*sgsgustcu(i)"
+             !
+             sgsgustcu_p(i,j) = sqrt( max(0.0, (sgsgustcu_p(i,j)**2 - wspd_local**2) ))
+         enddo
+         enddo
+
+       !endif
+
+    case default
+    end select convection_select
 
  end subroutine sfclayer_from_MPAS
 
@@ -1546,6 +1610,7 @@
                    qcg      = qcg_p      , spp_pbl   = spp_pbl  , isftcflx = isftcflx    , &
                    iz0tlnd  = iz0tlnd    , itimestep = initflag                          , &
                    errmsg   = errmsg     , errflg    = errflg                            , &
+                   sgsgustcu = sgsgustcu_p                                               , &
                    ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde , &
                    ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme , &
                    its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
@@ -1578,6 +1643,7 @@
                       qcg      = qcg_p      , spp_pbl   = spp_pbl  , isftcflx = isftcflx    , &
                       iz0tlnd  = iz0tlnd    , itimestep = initflag                          , &
                       errmsg   = errmsg     , errflg    = errflg                            , &
+                      sgsgustcu = sgsgustcu_p                                               , &
                       ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde , &
                       ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme , &
                       its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
