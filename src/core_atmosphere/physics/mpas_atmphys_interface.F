@@ -77,7 +77,7 @@
  type(mpas_pool_type),intent(in):: configs
 
 !local pointers:
- character(len=StrKIND),pointer:: pbl_scheme
+ character(len=StrKIND),pointer:: pbl_scheme,convection_scheme
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -122,6 +122,15 @@
 
  end select pbl_select
 
+ call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+ convection_select: select case(trim(convection_scheme))
+    case("cu_gf_monan")
+       if(.not.allocated(cnvcf_p)) allocate(cnvcf_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(buoyx_p)) allocate(buoyx_p(ims:ime,kms:kme,jms:jme))
+    case default
+
+ end select convection_select
+
 !... arrays used for calculating the hydrostatic pressure and exner function:
  if(.not.allocated(psfc_hyd_p)  ) allocate(psfc_hyd_p(ims:ime,jms:jme)          )
  if(.not.allocated(psfc_hydd_p) ) allocate(psfc_hydd_p(ims:ime,jms:jme)         )
@@ -141,7 +150,7 @@
  type(mpas_pool_type),intent(in):: configs
 
 !local pointers:
- character(len=StrKIND),pointer:: pbl_scheme
+ character(len=StrKIND),pointer:: pbl_scheme,convection_scheme
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -186,6 +195,15 @@
 
  end select pbl_select
 
+ call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+ convection_select: select case(trim(convection_scheme))
+    case("cu_gf_monan")
+       if(allocated(cnvcf_p)) deallocate(cnvcf_p)
+       if(allocated(buoyx_p)) deallocate(buoyx_p)
+
+    case default
+ end select convection_select
+
  if(allocated(psfc_hyd_p)  ) deallocate(psfc_hyd_p  )
  if(allocated(psfc_hydd_p) ) deallocate(psfc_hydd_p )
  if(allocated(pres_hyd_p)  ) deallocate(pres_hyd_p  )
@@ -213,10 +231,12 @@
  type(mpas_pool_type),intent(inout):: diag_physics
 
 !local pointers:
- character(len=StrKIND),pointer:: pbl_scheme
+ character(len=StrKIND),pointer:: pbl_scheme,convection_scheme
 
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
  integer,pointer:: index_ni
+ integer,pointer:: index_cnvcf, index_buoyx
+ integer,pointer:: config_gf_cporg, config_gf_pcvol
 
  real(kind=RKIND),dimension(:),pointer    :: latCell,lonCell
  real(kind=RKIND),dimension(:),pointer    :: fzm,fzp,rdzw
@@ -227,6 +247,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg
  real(kind=RKIND),dimension(:,:),pointer  :: ni
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+ real(kind=RKIND),dimension(:,:),pointer  :: cnvcf,buoyx
 
 !local variables:
  integer:: i,k,j
@@ -334,6 +355,36 @@
     case default
 
  end select pbl_select
+
+ call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+ convection_select: select case(trim(convection_scheme))
+    case("cu_gf_monan")
+       call mpas_pool_get_config(configs,'config_gf_pcvol',config_gf_pcvol)
+       call mpas_pool_get_config(configs,'config_gf_cporg',config_gf_cporg)
+       if(config_gf_cporg == 1) then
+         call mpas_pool_get_dimension(state,'index_buoyx',index_buoyx)
+         buoyx => scalars(index_buoyx,:,:)
+         do j = jts, jte
+         do k = kts, kte
+         do i = its, ite
+            buoyx_p(i,k,j) = max(0.,buoyx(k,i))
+         enddo
+         enddo
+         enddo
+       end if
+       if(config_gf_pcvol > 0) then
+         call mpas_pool_get_dimension(state,'index_cnvcf',index_cnvcf)
+         cnvcf => scalars(index_cnvcf,:,:)
+         do j = jts, jte
+         do k = kts, kte
+         do i = its, ite
+            cnvcf_p(i,k,j) = min(1.,max(0.,cnvcf(k,i)))
+         enddo
+         enddo
+         enddo
+       endif
+    case default
+ end select convection_select
 
 !calculation of the surface pressure using hydrostatic assumption down to the surface::
  do j = jts,jte
