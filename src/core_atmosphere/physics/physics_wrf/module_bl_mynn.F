@@ -3649,7 +3649,7 @@ CONTAINS
            !in saturated conditions, apply lower limit on sgm
            if (qmq .ge. zero) sgm(k) = max(0.02*qw(k), sgm(k))
            
-           q1(k)  = qmq  / sgm(k)  ! Q1, the normalized saturation
+           q1(k)  = qmq  / (1.e-8+sgm(k))  ! Q1, the normalized saturation
 
            !Add condition for falling/settling into low-RH layers, so at least
            !some cloud fraction is applied for all qc, qs, and qi.
