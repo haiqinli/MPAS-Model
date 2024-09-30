@@ -896,11 +896,12 @@
              gspd_local = vcpool(i)
 
              !--- adjust the gustiness speed to the resolved scale
-             gspd_local = max(adjust_scale * gspd_local, wspd_local )
+             !gspd_local = max(adjust_scale * gspd_local, wspd_local )
+             gspd_local = adjust_scale * gspd_local
              !--- combining env + gust pool regions for continuity of the field
              !--- where there is not cold pool, sgsgustcu_p -> wspd_local
              !--- where there is     cold pool, sgsgustcu_p -> gspd_local
-             sgsgustcu_p(i,j) = wspd_local + gspd_local
+             sgsgustcu_p(i,j) = gspd_local
              !--- temporary for output only
              !v2d2(i) =  sgsgustcu_p(i,j)
 
@@ -908,7 +909,7 @@
              !--- summed with "wspd" in routine 'sf_mynn_run'. See in this routine the line
              !--- "wspd(i)=sqrt(wspd(i)*wspd(i)+wstar(i)*wstar(i)+vsgd*vsgd+sgsgustcu(i)*sgsgustcu(i)"
              !
-             sgsgustcu_p(i,j) = sqrt( max(0.0, (sgsgustcu_p(i,j)**2 - wspd_local**2) ))
+             !sgsgustcu_p(i,j) = sqrt( max(0.0, (sgsgustcu_p(i,j)**2 - wspd_local**2) ))
          enddo
          enddo
 

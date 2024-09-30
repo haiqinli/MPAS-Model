@@ -60,9 +60,11 @@ CONTAINS
               ,htop,hbot,k22_shallow,kbcon_shallow,ktop_shallow &
               ,xmb_total,xmb_shallow,raincv,pratec,gdc,gdc2     &
               ,rthcuten,rqvcuten,rqccuten,rqicuten              &
-              ,rucuten,rvcuten                                  &
+              ,rucuten,rvcuten,bilbc,sub3d                      &
               ,pbl_scheme, maxmf, qc3d, qi3d                    &
-              ,qc_cu, qi_cu, cldfrac_cu, vcpool_p               &
+              ,qc_cu, qi_cu, cldfrac_cu, vcpool ,sig_deep     &
+              ,sub3d_rthcuten,sub3d_rqvcuten,sub3d_rucuten      &
+              ,sub3d_rvcuten                                    &
               ,ims, ime, jms, jme, kms,kme                      &
               ,ids, ide, jds, jde, kds,kde                      &
               ,its, ite, jts, jte, kts,kte)
@@ -92,10 +94,10 @@ CONTAINS
                       ims,ime,jms,jme,kms,kme, & 
                       its,ite,jts,jte,kts,kte
 
- integer,intent(in):: ichoice_deep,ichoice_shallow,itimestep
+ integer,intent(in):: sub3d,ichoice_deep,ichoice_shallow,itimestep
  integer,intent(in):: ishallow_g3
 
- integer,dimension(ims:ime,jms:jme ),intent(in):: kpbl
+ integer,dimension(ims:ime,jms:jme ),intent(in):: kpbl,bilbc
 
  real,intent(in):: dt
  real,intent(in):: xlv,r_v,cp,g
@@ -107,13 +109,18 @@ CONTAINS
  real,dimension(ims:ime,kms:kme,jms:jme),intent(in):: rqvblten,rthblten,rthraten
  real,dimension(ims:ime,kms:kme,jms:jme),intent(in),optional:: rthften,rqvften
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: qc3d,qi3d
+ real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: sub3d_rthcuten        &
+                                                        ,sub3d_rqvcuten        &
+                                                        ,sub3d_rucuten         &
+                                                        ,sub3d_rvcuten
+
  character(*),intent(in):: pbl_scheme
 
 
 !inout arguments:
  integer,dimension(ims:ime,jms:jme),intent(inout):: k22_shallow,kbcon_shallow,ktop_shallow
 
- real,dimension(ims:ime,jms:jme),intent(inout):: hbot,htop,raincv,pratec,xmb_total,xmb_shallow,vcpool_p
+ real,dimension(ims:ime,jms:jme),intent(inout):: hbot,htop,raincv,pratec,xmb_total,xmb_shallow,vcpool,sig_deep
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: rthcuten,rqvcuten,rqccuten,rqicuten
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout):: rucuten,rvcuten
  real,dimension(ims:ime,kms:kme,jms:jme),intent(inout),optional:: gdc,gdc2
@@ -132,13 +139,15 @@ CONTAINS
  integer,dimension(its:ite):: kbcon,ktop,k22s,k22,kbcons,ktops,jmin,kbconm,ktopm,k22m,jminm
 
  real:: dp,dq,pahfs,pgeoh,pqhfl,zkhvfl,zrho,zws,psum,clwtot
- real,dimension(its:ite):: area_loc,dx_loc,vcpool,vcpool_m
- real,dimension(its:ite):: xlandi,hfxi,qfxi
+ real,dimension(its:ite):: area_loc,dx_loc,vcpool_d,vcpool_m
+ real,dimension(its:ite):: xlandi,hfxi,qfxi,factor,mc_thresh
  real,dimension(its:ite):: xmb,xmbm,xmbs,xmb_dumm
  real,dimension(its:ite):: ccn
  real,dimension(its:ite):: cuten,psur,pret,pretm,prets,ter11,zqexec,ztexec,pmean,umean,vmean
  real,dimension(its:ite,kts:kte):: zo,t2d,q2d,po,p2d,us,vs,qc,qi,rhoi,tn,qo,tshall,qshall
  real,dimension(its:ite,kts:kte):: outt,outq,outqc,phh,cupclw,outu,outv
+ real,dimension(its:ite,kts:kte):: subten_h,subten_t,subten_q,subten_u,subten_v
+ real,dimension(its:ite,kts:kte):: subtenm_h,subtenm_t,subtenm_q,subtenm_u,subtenm_v
  real,dimension(its:ite,kts:kte):: outtm,outqm,outqcm,cupclwm,outum,outvm
  real,dimension(its:ite,kts:kte):: outts,outqs,outqcs,cupclws,outus,outvs,dhdt,gf_mfx
 
@@ -157,7 +166,7 @@ CONTAINS
  real,dimension (its:ite)         :: cap_suppress_j,rand_mom,rand_vmas
  integer,  dimension (its:ite) :: csum,csum_m
  real,dimension (its:ite,4)       :: rand_clos
- logical                          :: do_smoke_transport
+ logical                          :: do_smoke_transport,result
  !
  ! local variables on output for diagnostics for new GF/C3 scheme
  !
@@ -178,11 +187,12 @@ CONTAINS
  ipr = ite
  jpr = jte
 
- imid     = 1
+ imid     = 0
  ishallow = ishallow_g3
+ mc_thresh(:)=0.
  if (dx_loc(its)<6500.) imid = 0
  if (trim(pbl_scheme)=="bl_mynn") ishallow = 0
-
+ishallow=0
  do j = jts, jte
     do i = its, ite
        hbot(i,j)      = real(kte)
@@ -196,6 +206,7 @@ CONTAINS
        kbcon_shallow(i,j) = 0
        ktop_shallow(i,j)  = 0
        xmb_shallow(i,j)   = 0.
+       if(xland(i,j) < 1.)mc_thresh(i)=3.*1.e-4
     enddo
  enddo
 
@@ -286,15 +297,26 @@ CONTAINS
        prets(i)     = 0.
        zqexec(i)   = 0.
        ztexec(i)   = 0.
+       vcpool_d(i)   = 0.
+       vcpool_m(i)   = 0.
     enddo
 
-    do k = kts, ktf
+!    sub3d_rthcuten(:,:,j) =0.
+!    sub3d_rqvcuten(:,:,j) =0.
+!    sub3d_rucuten(:,:,j) =0.
+!    sub3d_rvcuten(:,:,j) =0.
+!    rthcuten(:,:,j) =0.
+!    rqvcuten(:,:,j) =0.
+!    rucuten(:,:,j) =0.
+!    rvcuten(:,:,j) =0.
+     do k = kts, ktf
        do i = its, itf
           us(i,k)      = u(i,k,j)
           vs(i,k)      = v(i,k,j)
           rhoi(i,k)    = rho(i,k,j)
           t2d(i,k)     = t(i,k,j)
           q2d(i,k)     = q(i,k,j)
+          qcheck(i,k)     = q(i,k,j)
           qc(i,k)     = max(0.,qc3d(i,k,j))
           qi(i,k)     = max(0.,qi3d(i,k,j))
           if(q2d(i,k) .lt. 1.e-08) q2d(i,k) = 1.e-08
@@ -331,8 +353,18 @@ CONTAINS
           outt(i,k)    = 0.
           outts(i,k)   = 0.
           outtm(i,k)   = 0.
+          subtenm_h(i,k)=0.
+          subtenm_q(i,k)=0.
+          subtenm_t(i,k)=0.
+          subtenm_u(i,k)=0.
+          subtenm_v(i,k)=0.
        enddo
     enddo
+          subten_h(:,:)=0.
+          subten_q(:,:)=0.
+          subten_t(:,:)=0.
+          subten_u(:,:)=0.
+          subten_v(:,:)=0.
 
     !calculation of the moisture convergence:
        do k = kts+1, ktf
@@ -348,8 +380,16 @@ CONTAINS
           enddo
        enddo
        do i = its, itf
-          if(mconv(i) .lt. 0.) mconv(i) = 0.
-          if((dx_loc(i)<6500.).and.(trim(pbl_scheme)=="bl_mynn").and.(maxmf(i,jts).gt.0.))ierr(i)=555
+          if(mconv(i) .le. mc_thresh(i)) then
+                ierr(i)=42 
+                ierrm(i)=42 
+                mconv(i) = 0.
+          endif
+       !   if((dx_loc(i)<6500.).and.(trim(pbl_scheme)=="bl_mynn").and.(maxmf(i,jts).gt.0.))ierr(i)=555
+! fore regional domain, blend in tendencies in relaxation zone
+          if(bilbc(i,j).eq.7)ierr(i)=556
+          factor(i)=(6.-float(bilbc(i,j)))/7.+1./7.
+          if(bilbc(i,j) == 0 )factor(i)=1.
        enddo
 
     if(use_excess.gt.0 .or. use_excess_sh.gt.0)then
@@ -434,7 +474,7 @@ CONTAINS
 !> - Call cu_gf_deep_run() for middle GF convection
       if(imid == 1)then
        call cu_gf_deep_run(        &
-               itf,ktf,its,ite, kts,kte  &
+               itf,ktf,its,ite, kts,kte,sub3d  &
               ,dicycle       &
               ,13            &
               ,ipr           &
@@ -492,6 +532,11 @@ CONTAINS
               ,wetdpc_mid    &
               ,do_smoke_transport   &
               ,vcpool_m      &
+              ,subtenm_h     &
+              ,subtenm_q     &
+              ,subtenm_t     &
+              ,subtenm_u     &
+              ,subtenm_v     &
 !    the following should be set to zero if not available
               ,rand_mom      & ! for stochastics mom, if temporal and spatial patterns exist
               ,rand_vmas     & ! for stochastics vertmass, if temporal and spatial patterns exist
@@ -506,16 +551,18 @@ CONTAINS
               ,do_capsuppress,cap_suppress_j &
               ,k22m          &
               ,jminm)
-      call neg_check('mid',j,dt,q2d,outqm,outtm,outum,outvm,outqcm,pretm   &
+      call neg_check('mid',j,dt,q2d,outqm,subtenm_q,outtm,subtenm_t,outum,subtenm_u,  &
+                       outvm,subtenm_v,outqcm,pretm   &
                      ,its,ite,kts,kte,itf,ktf,ktopm)
              do i=its,ite
+!          if(outtm(i,10)*86400. .lt.-10. .or. subtenm_t(i,10)*86400. .gt. 10)print*,'gfmpas1',outtm(i,10)*86400.,subtenm_t(i,10)*86400.
                do k=kts,kte
-                 qcheck(i,k)=q2d(i,k)+outqm(i,k)*dt
+                 qcheck(i,k)=q2d(i,k)+(subtenm_q(i,k)+outqm(i,k))*dt
                enddo
              enddo
            endif
    call cu_gf_deep_run(        &
-               itf,ktf,its,ite, kts,kte  &
+               itf,ktf,its,ite, kts,kte,sub3d  &
               ,dicycle       &  ! diurnal cycle flag
               ,ichoice_deep  &  ! choice of closure, use "0" for ensemble average
               ,ipr           &  ! this flag can be used for debugging prints
@@ -572,7 +619,12 @@ CONTAINS
               ,chem3d        &
               ,wetdpc_deep   &
               ,do_smoke_transport   &
-              ,vcpool        &
+              ,vcpool_d        &
+              ,subten_h     &
+              ,subten_q     &
+              ,subten_t     &
+              ,subten_u     &
+              ,subten_v     &
               ,rand_mom      &  ! for stochastics mom, if temporal and spatial patterns exist
               ,rand_vmas     &  ! for stochastics vertmass, if temporal and spatial patterns exist
               ,rand_clos     &  ! for stochastics closures, if temporal and spatial patterns exist
@@ -586,9 +638,10 @@ CONTAINS
               ,do_capsuppress,cap_suppress_j    &    !         
               ,k22                              &    !
               ,jmin)                         !
-
-      call neg_check('deep',j,dt,qcheck,outq,outt,outu,outv,outqc,pret    &
+      call neg_check('deep',j,dt,qcheck,outq,subten_q,outt,subten_t,  &
+                      outu,subten_u,outv,subten_v,outqc,pret    &
                      ,its,ite,kts,kte,itf,ktf,ktop)
+
 !    !... shallow convection:
     if(ishallow == 1 )then
 !       call cup_gf_sh( &
@@ -621,42 +674,60 @@ CONTAINS
           k22_shallow(i,j)   = k22m(i)
           kbcon_shallow(i,j) = kbconm(i)
           ktop_shallow(i,j)  = ktopm(i)
-          vcpool_p(i,j)      = vcpool(i)*frh_out(i)
+          vcpool(i,j)      = vcpool_d(i)*frh_out(i)
        enddo
    endif
 
     do i = its, ite
        if(pret(i) .gt. 0. .or. pretm(i).gt.0. .or. prets(i).gt.0.) then
-          xmb_total(i,j) = xmb(i)+xmbm(i)+xmbs(i)
-          pratec(i,j)    = pret(i)+pretm(i)+prets(i)
-          raincv(i,j)    = (pret(i)+pretm(i)+prets(i))*dt
+          xmb_total(i,j) = factor(i)*(xmb(i)+xmbm(i)+xmbs(i))
+          sig_deep(i,j)=min(.999,1.-frh_out(i))
+          !sig_deep(i,j)=min(.999,frh_out(i))
+          pratec(i,j)    = factor(i)*(pret(i)+pretm(i)+prets(i))
+          raincv(i,j)    = factor(i)*(pret(i)+pretm(i)+prets(i))*dt
+!          if(outt(i,10)*86400. .lt.-1000. .or. subten_t(i,10)*86400. .gt. 1000)print*,'gfmpas1',outt(i,10)*86400.,subten_t(i,10)*86400.
+!          if(outt(i,10)*86400. .lt.-1000. .or. subten_t(i,10)*86400. .gt. 1000)print*,'gfmpas2',outt(i,25)*86400.,subten_t(i,25)*86400.
           ktopmax=max(ktopm(i),ktop(i),ktops(i))
           kbconmax=max(kbconm(i),kbcon(i),kbcons(i))
           
           if(ktopmax > htop(i,j) ) htop(i,j) = ktopmax + .001
           if(kbconmax < hbot(i,j)) hbot(i,j) = kbconmax + .001
+       else if (ierr(i).gt.0) then
+          sig_deep(i,j)=0.
+          factor(i)=0.
        endif
     enddo
 
     !... always save the tendencies of potential temperature, water vapor, cloud water, and cloud ice:
-    do k = kts, ktf
-       do i = its, itf
-          rthcuten(i,k,j) = (outts(i,k) + outt(i,k)+outtm(i,k))/pi(i,k,j)
-          rqvcuten(i,k,j) = outqs(i,k) + outq(i,k)+outqm(i,k)
-          rucuten(i,k,j) = outu(i,k)+outum(i,k)+outus(i,k)
-          rvcuten(i,k,j) = outv(i,k)+outvm(i,k)+outvs(i,k)
-          gf_mfx(i,k) = xmb(i)*zuo(i,k)+xmbm(i)*zum(i,k)+xmbs(i)*zus(i,k)
+    do k = kts, kte
+       do i = its, ite
+          rthcuten(i,k,j) = factor(i)*(outts(i,k) + outt(i,k)+outtm(i,k))/pi(i,k,j)
+          rqvcuten(i,k,j) = factor(i)*(outqs(i,k) + outq(i,k)+outqm(i,k))
+          rucuten(i,k,j) = factor(i)*(outu(i,k)+outum(i,k)+outus(i,k))
+          rvcuten(i,k,j) = factor(i)*(outv(i,k)+outvm(i,k)+outvs(i,k))
+          sub3d_rthcuten(i,k,j) = factor(i)*subten_t(i,k)/pi(i,k,j)
+          sub3d_rqvcuten(i,k,j) = factor(i)*subten_q (i,k)
+          sub3d_rucuten (i,k,j) = factor(i)*subten_u (i,k)
+          sub3d_rvcuten (i,k,j) = factor(i)*subten_v (i,k)
 
+!---temporary setting -- must be removed once the subsidence tendencies are correct
+                  !sub3d_rthcuten(i,k,j) = 2.e-5
+                  !sub3d_rqvcuten(i,k,j) = 3.e-8 
+                  !sub3d_rucuten (i,k,j) = 4.e-7 
+                  !sub3d_rvcuten (i,k,j) = 5.e-7
+!---temporary setting -- 
+
+          gf_mfx(i,k) =xmb(i)*zuo(i,k)+xmbm(i)*zum(i,k)+xmbs(i)*zus(i,k)
           if(t2d(i,k) .lt. tcrit) then
              rqccuten(i,k,j) = 0.
-             rqicuten(i,k,j) = outqcs(i,k) + outqc(i,k) + outqcm(i,k)
-             if(present(gdc2)) gdc2(i,k,j) = frhs(i)*cupclws(i,k) + frh_out(i)*cupclw(i,k) + frhm(i)*cupclwm(i,k)
-             qi_cu(i,k,j)=gdc2(i,k,j)
+             rqicuten(i,k,j) = factor(i)*(outqcs(i,k) + outqc(i,k) + outqcm(i,k))
+             if(present(gdc2)) gdc2(i,k,j) = factor(i)*(frhs(i)*cupclws(i,k) + frh_out(i)*cupclw(i,k) + frhm(i)*cupclwm(i,k))
+             qi_cu(i,k,j)=factor(i)*gdc2(i,k,j)
           else
              rqicuten(i,k,j) = 0.
-             rqccuten(i,k,j) = outqcs(i,k) + outqc(i,k) + outqcm(i,k)
-             if(present(gdc)) gdc(i,k,j) = frhs(i)*cupclws(i,k) + frh_out(i)*cupclw(i,k) + frhm(i)*cupclwm(i,k)
-             qc_cu(i,k,j)=gdc(i,k,j)
+             rqccuten(i,k,j) = factor(i)*(outqcs(i,k) + outqc(i,k) + outqcm(i,k))
+             if(present(gdc)) gdc(i,k,j) = factor(i)*(frhs(i)*cupclws(i,k) + frh_out(i)*cupclw(i,k) + frhm(i)*cupclwm(i,k))
+             qc_cu(i,k,j)=factor(i)*gdc(i,k,j)
           endif
        enddo
     enddo
@@ -793,7 +864,7 @@ CONTAINS
       real :: ZLL, DZZ, ZZZ ! length scales
       real :: ZAH, ZA, ZB, ZSBAR, ZQ1, ZSIGMA, ZDRW, ZDTL ! related to computation of Sig_s
       real :: ZSIG_CONV,  ZSIGMA_NOCONV,  ZQ1_NOCONV      ! convective part of Sig_s
-      real, parameter :: zq1_tuning = 1.
+      real, parameter :: zq1_tuning = 0.
       !
       !*       0.2  Definition of constants :
       !
