@@ -20,6 +20,7 @@
  use mpas_atmphys_driver_seaice,only: allocate_seaice,deallocate_seaice,driver_seaice
  use mpas_atmphys_driver_sfclayer
  use mpas_atmphys_driver_oml
+ use mpas_atmphys_driver_smoke
  use mpas_atmphys_constants
  use mpas_atmphys_interface
  use mpas_atmphys_update
@@ -133,6 +134,7 @@
                                   config_pbl_scheme,        &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme,    &
+                                  config_smoke_scheme,      &
                                   config_sfclayer_scheme
 
  logical, pointer:: config_oml1d
@@ -159,6 +161,7 @@
  call mpas_pool_get_config(domain%configs,'config_pbl_scheme'       ,config_pbl_scheme       )
  call mpas_pool_get_config(domain%configs,'config_radt_lw_scheme'   ,config_radt_lw_scheme   )
  call mpas_pool_get_config(domain%configs,'config_radt_sw_scheme'   ,config_radt_sw_scheme   )
+ call mpas_pool_get_config(domain%configs,'config_smoke_scheme'     ,config_smoke_scheme     )
  call mpas_pool_get_config(domain%configs,'config_sfclayer_scheme'  ,config_sfclayer_scheme  )
  call mpas_pool_get_config(domain%configs,'config_bucket_radt'      ,config_bucket_radt      )
  call mpas_pool_get_config(domain%configs,'config_bucket_update'    ,config_bucket_update    )
@@ -288,6 +291,18 @@
        enddo
 !$OMP END PARALLEL DO
        call deallocate_seaice(config_lsm_scheme)
+    endif
+
+    !call to mpas smoke model:
+    if(config_smoke_scheme .ne. 'off') then
+       call allocate_smoke(block%configs)
+!$OMP PARALLEL DO
+       do thread=1,nThreads
+          call driver_smoke(itimestep,block%configs,mesh,sfc_input,diag_physics,tend_physics, &
+                          cellSolveThreadStart(thread),cellSolveThreadEnd(thread))
+       end do
+!$OMP END PARALLEL DO
+       call deallocate_smoke(block%configs)
     endif
 
     !call to pbl schemes:

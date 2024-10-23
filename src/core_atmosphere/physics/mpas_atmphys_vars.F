@@ -210,6 +210,7 @@
     nr_p,             &!
     ns_p, ng_p, nh_p, nccn_p, &
     volg_p, volh_p,   &!
+    smoke_p,          &!
     nwfa_p,           &!
     nifa_p,             zrw_p, zgw_p, zhw_p
 
@@ -256,6 +257,7 @@
     f_qs,             &!parameter set to true to include the snow minxg ratio.
     f_qg,             &!parameter set to true to include the graupel mixing ratio.
     f_qoz,            &!parameter set to true to include the ozone mixing ratio.
+    f_smoke,          &!parameter set to true to include the smoke mixing ratio.
     f_qh
 
  logical:: &
@@ -580,6 +582,7 @@
     v10_p,            &!v at 10 m                                                                            [m/s]
     wspd_p,           &!wind speed                                                                           [m/s]
     znt_p,            &!time-varying roughness length                                                          [m]
+    dpt2m_p,          &!dewpoint temperature at surface                                                        [K]
     zol_p              !
 
 !... arrays only in monin_obukohv (module_sf_sfclay.F):

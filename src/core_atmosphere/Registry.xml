@@ -412,6 +412,7 @@
 		<package name="bl_myj_in" description="parameterization of MYJ Planetary Boundary Layer."/>
                 <package name="lsm_ruc_in" description="parameterization of the RUC land surface."/>
                 <package name="lsm_noah_in" description="parameterization of the Noah land surface."/>
+                <package name="mpas_smoke_in" description="parameterization of the Smoke."/>
 
                 <package name="iau" description="Incremental Analysis Update"/>
                 <package name="limited_area" description="Limited-area simulations, which have lateral boundaries"/>
@@ -1690,6 +1691,9 @@
                              description="Hail reflectivity moment"
                              packages="nssl3m_in"/>
 
+		        <var name="smoke" array_group="smoke" units="kg kg^{-1}"
+                             description="smoke mixing ratio"
+                             packages="mpas_smoke_in"/>
 
                 </var_array>
 #endif
@@ -2065,6 +2069,10 @@
                         <var name="tend_zhw" name_in_code="zhw" array_group="reflectivity" units="m^6 m^{-3} s^{-1}"
                              description="Tendency of hail reflectivity multiplied by dry air density divided by d(zeta)/dz"
                              packages="nssl3m_in"/>
+
+		        <var name="tend_smoke" name_in_code="smoke" array_group="smoke" units="kg m^{-3} s^{-1}"
+                             description="Tendency of smoke mass per unit volume divided by d(zeta)/dz"
+                             packages="mpas_smoke_in"/>
                 </var_array>
 #endif
         </var_struct>
@@ -2519,6 +2527,10 @@
                      units="s"
                      description="Relaxation time to initial values in 1-d OML"
                      possible_values="Non-negative real values"/>
+	        <nml_option name="config_smoke_scheme" type="character" default_value="off" in_defaults="false"
+                     units="-"
+                     description="configuration for mpas smoke model"
+                     possible_values="`suite',`off'"/>
         </nml_record>
 
         <var_struct name="diag_physics" time_levs="1">

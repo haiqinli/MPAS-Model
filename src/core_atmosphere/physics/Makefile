@@ -4,7 +4,7 @@ ifeq ($(CORE),atmosphere)
 COREDEF = -Dmpas
 endif
 
-all: lookup_tables core_physics_init core_physics_mmm core_microphysics core_UGWP core_physics_wrf core_physics
+all: lookup_tables core_physics_init core_physics_mmm core_microphysics core_UGWP core_SMOKE core_physics_wrf core_physics
 
 dummy:
 	echo "****** compiling physics ******"
@@ -31,6 +31,7 @@ OBJS = \
 	mpas_atmphys_driver_radiation_sw.o \
 	mpas_atmphys_driver_seaice.o       \
 	mpas_atmphys_driver_sfclayer.o     \
+	mpas_atmphys_driver_smoke.o        \
 	mpas_atmphys_finalize.o            \
 	mpas_atmphys_init.o                \
 	mpas_atmphys_init_microphysics.o   \
@@ -62,7 +63,10 @@ core_microphysics: core_physics_init core_physics_mmm
 core_UGWP: core_physics_init
 	(cd UGWP; $(MAKE) all)
 
-core_physics_wrf: core_physics_init core_physics_mmm core_UGWP
+core_SMOKE: core_physics_init
+	(cd SMOKE; $(MAKE) all)
+
+core_physics_wrf: core_physics_init core_physics_mmm core_UGWP core_SMOKE
 	(cd physics_wrf; $(MAKE) all COREDEF="$(COREDEF)")
 
 core_physics_init: $(OBJS_init)
@@ -153,6 +157,12 @@ mpas_atmphys_driver_sfclayer.o: \
 	mpas_atmphys_constants.o \
 	mpas_atmphys_vars.o
 
+mpas_atmphys_driver_smoke.o: \
+        mpas_atmphys_constants.o \
+	mpas_atmphys_utilities.o \
+	mpas_atmphys_manager.o \
+        mpas_atmphys_vars.o
+
 mpas_atmphys_init.o: \
 	mpas_atmphys_driver_convection.o \
 	mpas_atmphys_driver_lsm.o \
@@ -225,6 +235,7 @@ clean:
 	( cd physics_mmm; $(MAKE) clean )
 	( cd TEMPO; $(MAKE) clean )
 	( cd UGWP; $(MAKE) clean )
+	( cd SMOKE; $(MAKE) clean )
 	@# Certain systems with intel compilers generate *.i files
 	@# This removes them during the clean process
 	$(RM) *.i
@@ -233,16 +244,16 @@ clean:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
 	$(CPP) $(CPPFLAGS) $(COREDEF) $(HYDROSTATIC) $(CPPINCLUDES) $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I.. -I../../framework -I../../external/esmf_time_f90
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I./SMOKE -I.. -I../../framework -I../../external/esmf_time_f90
 else
-	$(FC) $(CPPFLAGS) $(COREDEF) $(HYDROSATIC) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I.. -I../../framework -I../../external/esmf_time_f90
+	$(FC) $(CPPFLAGS) $(COREDEF) $(HYDROSATIC) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I./SMOKE -I.. -I../../framework -I../../external/esmf_time_f90
 endif
 
 .F90.o:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
 	$(CPP) $(CPPFLAGS) $(COREDEF) $(HYDROSTATIC) $(CPPINCLUDES) $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I.. -I../../framework -I../../external/esmf_time_f90
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I./SMOKE -I.. -I../../framework -I../../external/esmf_time_f90
 else
-	$(FC) $(CPPFLAGS) $(COREDEF) $(HYDROSATIC) $(FFLAGS) -c $*.F90 $(CPPINCLUDES) $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I.. -I../../framework -I../../external/esmf_time_f90
+	$(FC) $(CPPFLAGS) $(COREDEF) $(HYDROSATIC) $(FFLAGS) -c $*.F90 $(CPPINCLUDES) $(FCINCLUDES) -I./physics_mmm -I./physics_wrf -I./TEMPO -I./UGWP -I./SMOKE -I.. -I../../framework -I../../external/esmf_time_f90
 endif

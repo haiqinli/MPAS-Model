@@ -18,6 +18,7 @@
  use mpas_atmphys_driver_radiation_lw, only: init_radiation_lw
  use mpas_atmphys_driver_radiation_sw, only: init_radiation_sw
  use mpas_atmphys_driver_sfclayer
+ use mpas_atmphys_driver_smoke, only: init_smoke
  use mpas_atmphys_vars,only: f_qc,f_qr,f_qi,f_qs,f_qg,f_qoz,f_nc,f_ni,f_nifa,f_nwfa,f_nbca
 
  use mpas_atmphys_landuse
@@ -104,6 +105,7 @@
                    config_microp_scheme,     &
                    config_pbl_scheme,        &
                    config_sfclayer_scheme,   &
+                   config_smoke_scheme,      &
                    config_radt_lw_scheme,    &
                    config_radt_sw_scheme
 
@@ -151,6 +153,7 @@
  call mpas_pool_get_config(configs,'config_sfclayer_scheme'  ,config_sfclayer_scheme  )
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,config_radt_lw_scheme   )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme'   ,config_radt_sw_scheme   )
+ call mpas_pool_get_config(configs,'config_smoke_scheme'     ,config_smoke_scheme     )
 
  call mpas_pool_get_dimension(mesh,'nCellsSolve',nCellsSolve)
  call mpas_pool_get_dimension(mesh,'nLags'      ,nLags      )
@@ -376,6 +379,10 @@
 !   if(config_lsm_scheme .ne. 'off') call init_lsm(dminfo,mesh,configs,diag_physics,sfc_input)
 !endif
  if(config_lsm_scheme .ne. 'off') call init_lsm(dminfo,mesh,configs,diag_physics,sfc_input)
+
+!initialization of parameterized smoke processes:
+ if(config_smoke_scheme .ne. 'off') &
+    call init_smoke(mesh,configs,diag_physics)
 
 !initialization of shortwave radiation processes:
  init_done = .false.
