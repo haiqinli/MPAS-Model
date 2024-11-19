@@ -64,7 +64,7 @@ CONTAINS
               ,pbl_scheme, maxmf, qc3d, qi3d                    &
               ,qc_cu, qi_cu, cldfrac_cu, vcpool ,sig_deep     &
               ,sub3d_rthcuten,sub3d_rqvcuten,sub3d_rucuten      &
-              ,sub3d_rvcuten                                    &
+              ,sub3d_rvcuten,rainncv                            &
               ,ims, ime, jms, jme, kms,kme                      &
               ,ids, ide, jds, jde, kds,kde                      &
               ,its, ite, jts, jte, kts,kte)
@@ -102,7 +102,7 @@ CONTAINS
  real,intent(in):: dt
  real,intent(in):: xlv,r_v,cp,g
  real,dimension(ims:ime,jms:jme),intent(in):: areaCell,dxCell
- real,dimension(ims:ime,jms:jme),intent(in):: hfx,qfx,gsw,ht,xland,maxmf
+ real,dimension(ims:ime,jms:jme),intent(in):: hfx,qfx,gsw,ht,xland,maxmf,rainncv
 
  real,dimension(ims:ime,kms:kme,jms:jme),intent(in):: u,v,w,p,pi,q,rho,t
  real,dimension(ims:ime,kms:kme,jms:jme),intent(in):: dz8w,p8w
@@ -172,6 +172,7 @@ CONTAINS
  !
  real,dimension (its:ite,10)       :: forcing,forcingm
  real,dimension (its:ite)          :: edto,edtd,edtm,frh_out,frhm,frhs
+ real                              :: rain_thresh
  real,dimension (its:ite,kts:kte)  :: zuo,zdo,zum,zus,zdm,zdd,cnvwt,cnvwtm,cnvwts
   
  itf = min(ite,ide-1)
@@ -192,7 +193,8 @@ CONTAINS
  mc_thresh(:)=0.
  if (dx_loc(its)<6500.) imid = 0
  if (trim(pbl_scheme)=="bl_mynn") ishallow = 0
-ishallow=0
+ ishallow=0
+ rain_thresh=0. ! (mm/hr)
  do j = jts, jte
     do i = its, ite
        hbot(i,j)      = real(kte)
@@ -200,13 +202,12 @@ ishallow=0
        xmb_total(i,j) = 0.
        raincv(i,j)    = 0.
        pratec(i,j)    = 0.
-
        !shallow convection:
        k22_shallow(i,j)   = 0
        kbcon_shallow(i,j) = 0
        ktop_shallow(i,j)  = 0
        xmb_shallow(i,j)   = 0.
-       if(xland(i,j) < 1.)mc_thresh(i)=3.*1.e-4
+       !if(xland(i,j) < 1.)mc_thresh(i)=3.*1.e-4
     enddo
  enddo
 
@@ -390,6 +391,8 @@ ishallow=0
           if(bilbc(i,j).eq.7)ierr(i)=556
           factor(i)=(6.-float(bilbc(i,j)))/7.+1./7.
           if(bilbc(i,j) == 0 )factor(i)=1.
+! for high resolution runs, turn off convection if there is already significant precipitation from microphysics          
+          if(rainncv(i,j)/dt*3600. > rain_thresh .and. dx_loc(i) < 6500. .and. sub3d == 1)ierr(i)=44
        enddo
 
     if(use_excess.gt.0 .or. use_excess_sh.gt.0)then
@@ -674,12 +677,12 @@ ishallow=0
           k22_shallow(i,j)   = k22m(i)
           kbcon_shallow(i,j) = kbconm(i)
           ktop_shallow(i,j)  = ktopm(i)
-          vcpool(i,j)      = vcpool_d(i)*frh_out(i)
        enddo
    endif
 
     do i = its, ite
        if(pret(i) .gt. 0. .or. pretm(i).gt.0. .or. prets(i).gt.0.) then
+          vcpool(i,j)      = vcpool_d(i)*frh_out(i)
           xmb_total(i,j) = factor(i)*(xmb(i)+xmbm(i)+xmbs(i))
           sig_deep(i,j)=min(.999,1.-frh_out(i))
           !sig_deep(i,j)=min(.999,frh_out(i))

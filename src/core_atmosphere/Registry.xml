@@ -1294,6 +1294,9 @@
                 <var name="nEdgesOnCell" type="integer" dimensions="nCells" units="-"
                      description="Number of edges forming the boundary of a cell"/>
 
+	        <var name="nCellsOnCellsOnCell" type="integer" dimensions="nCells" units="-"
+                     description="Number of cells that are outer neighbors of CellsOnCell"/>
+
                 <var name="nEdgesOnEdge" type="integer" dimensions="nEdges" units="-"
                      description="Number of edges involved in reconstruction of tangential velocity for an edge"/>
 
@@ -1344,6 +1347,9 @@
 
                 <var name="cellsOnCell" type="integer" dimensions="maxEdges nCells" units="-"
                      description="IDs of cells neighboring a cell"/>
+
+	        <var name="cellsOnCellsOnCell" type="integer" dimensions="maxEdges2 nCells" units="-"
+                     description="IDs of outer neighbors of cellsOnCell"/>
 
                 <var name="verticesOnCell" type="integer" dimensions="maxEdges nCells" units="-"
                      description="IDs of vertices (corner points) of a cell"/>

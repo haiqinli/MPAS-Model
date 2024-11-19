@@ -39,7 +39,9 @@ MODULE module_cu_gf_deep
 !> still 16 ensembles for clousres
      integer, parameter:: maxens3=16
 !>  which coldpool version to use
-     integer, parameter:: icoldpool=1
+     integer, parameter:: icoldpool=0  ! 1 = momentum impact; 2 = sf flx impact
+                                       ! 3 = both, (1) and (2)
+                                       ! 4 = full implement, not working yet...
 
 !---meltglac-------------------------------------------------
  logical, parameter :: melt_glac      = .true.  !<- turn on/off ice phase/melting
@@ -1731,7 +1733,7 @@ contains
     do i=its,itf
         if(ierr(i).eq.0)then
 
-!         dp=100.*(po_cup(i,1)-po_cup(i,2))
+          dp=100.*(po_cup(i,1)-po_cup(i,2))
 !
 !         dellaq (i,1)=(edto(i)*zdo(i,2)*qcdo(i,2)         &
 !                      -edto(i)*zdo(i,2)*qo_cup(i,2))*g/dp &
@@ -1739,7 +1741,7 @@ contains
 !         g_rain=  0.5*(pwo (i,1)+pwo (i,2))*g/dp
 !         e_dn  = -0.5*(pwdo(i,1)+pwdo(i,2))*g/dp*edto(i)  ! pwdo < 0 and e_dn must > 0
 !         dellaq(i,1) = dellaq(i,1)+ e_dn-g_rain
-!         dellat_d(i,1)=zdo(i,2)*edto(i)*(hcdo(i,2)-heo_cup(i,2))*g/dp
+          dellat_d(i,1)=zdo(i,2)*edto(i)*(hcdo(i,2)-heo_cup(i,2))*g/dp
 
          
          !--- conservation check
@@ -2404,7 +2406,7 @@ contains
       enddo
       !-----downdraft_cold_pool---------------
       !if (icoldpool > 0 .and. imid ==0) then
-      if (icoldpool /= 2 .and. imid ==0) then
+      if (icoldpool /= 0 .and. icoldpool /= 2 .and. imid ==0) then
       ! --- adding the gust front horizontal speed to the 2-d MCL wind
       ! --- only magnitude is augmented, direction is kept the same
       do i=its,itf
@@ -2414,14 +2416,14 @@ contains
           if(ierr(i) > 0 ) cycle
            do k=kts+1,ktop(i)-1
              trash =-(po_cup(i,k)-po_cup(i,kts))
-             if(trash.gt.300..and. trash.lt.600.)then
+             if(trash.gt.300. .and. trash.lt.600.)then
              dp=100.*(po_cup(i,k)-po_cup(i,k+1))
              umcl(i)=umcl(i)+us(i,k)*dp
              vmcl(i)=vmcl(i)+us(i,k)*dp
              dpsum=dpsum+dp
              endif
            enddo
-           vmcl(i)=vmcl(i)/dpsum
+           umcl(i)=umcl(i)/dpsum
            vmcl(i)=vmcl(i)/dpsum
 
            MCL_speed= sqrt( umcl(i)**2 + vmcl(i)**2 )
@@ -2432,10 +2434,14 @@ contains
       ! --- gust front momentum impact
       do i=its,itf
           if(ierr(i) > 0 .or. vcpool(i) .le.0.) cycle
-           do k=kts,kdet(i)
+             k=kts
              dp=100.*(po_cup(i,k)-po_cup(i,k+1))
-             outu(i,k) = outu(i,k) + edto(i)*zdo(i,k+1)*(umcl(i)-us(i,k))*g/dp*xmb(i)
-             outv(i,k) = outv(i,k) + edto(i)*zdo(i,k+1)*(vmcl(i)-vs(i,k))*g/dp*xmb(i)
+             outu(i,k) = outu(i,k) + edto(i)*zdo(i,k+1)*umcl(i)*g/dp*xmb(i)
+             outv(i,k) = outv(i,k) + edto(i)*zdo(i,k+1)*vmcl(i)*g/dp*xmb(i)
+                do k=kts+1,kdet(i)
+                  dp=100.*(po_cup(i,k)-po_cup(i,k+1))
+                  outu(i,k) = outu(i,k) + edto(i)*dd_massdetro(i,k)*umcl(i)*g/dp*xmb(i)
+                  outv(i,k) = outv(i,k) + edto(i)*dd_massdetro(i,k)*vmcl(i)*g/dp*xmb(i)
            enddo
       enddo
      endif ! icoldpool
@@ -4161,7 +4167,7 @@ endif
 !
 ! first do check on vertical heating rate
 !
-      thresh=300.01
+      thresh=800.01
 !      thresh=200.01        !ss
 !      thresh=250.01
       names=1.
@@ -4170,6 +4176,8 @@ endif
         names=1.
       endif
       scalef=86400.
+      icheck = 0
+      !if(icheck > 0 ) then
 !$acc kernels
 !$acc loop private(qmemf,qmem,icheck)
       do i=its,itf
@@ -4209,6 +4217,7 @@ endif
       enddo
       pret(i)=pret(i)*qmemf 
       enddo
+      !endif
 !$acc end kernels
 !      return
 !
@@ -4253,6 +4262,20 @@ endif
          outqc(i,k)=outqc(i,k)*qmemf
       enddo
       pret(i)=pret(i)*qmemf 
+      if(pret(i).lt.0.0001)then
+              pret(i)=0.
+              do k=kts,ktop(i)
+                 outq(i,k)=0.
+                 sq(i,k)=0.
+                 outt(i,k)=0.
+                 st(i,k)=0.
+                 outu(i,k)=0.
+                 su(i,k)=0.
+                 outv(i,k)=0.
+                 sv(i,k)=0.
+                 outqc(i,k)=0.
+              enddo
+      endif
       enddo
 !$acc end kernels
    end subroutine neg_check
@@ -4477,7 +4500,19 @@ endif
                outqc(i,k) = 0.
              enddo
              pre(i)=0.
-          endif
+        endif
+        if(pre(i).lt.0.0001)then
+             ierr(i)=45
+             do k=kts,ktf
+               outtem(i,k)=0. 
+               outq(i,k)  = 0.
+               subten_t(i,k)=0.
+               subten_q(i,k)=0.
+               subten_h(i,k)=0.
+               outqc(i,k) = 0.
+             enddo
+             pre(i)=0.
+        endif
        enddo
 !$acc end kernels
 #ifndef _OPENACC

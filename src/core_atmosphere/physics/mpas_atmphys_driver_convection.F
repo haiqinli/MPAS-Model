@@ -141,6 +141,7 @@
  if(.not.allocated(rqicuten_p) ) allocate(rqicuten_p(ims:ime,kms:kme,jms:jme))
  if(.not.allocated(pratec_p)   ) allocate(pratec_p(ims:ime,jms:jme)          )
  if(.not.allocated(raincv_p)   ) allocate(raincv_p(ims:ime,jms:jme)          )
+ if(.not.allocated(rainncv_p)   ) allocate(rainncv_p(ims:ime,jms:jme)          )
 
  do i = its,ite
  do j = jts,jte
@@ -338,6 +339,7 @@
  if(allocated(rqicuten_p) ) deallocate(rqicuten_p )
  if(allocated(pratec_p)   ) deallocate(pratec_p   )
  if(allocated(raincv_p)   ) deallocate(raincv_p   )
+ if(allocated(rainncv_p)   ) deallocate(rainncv_p   )
 
  convection_select: select case(convection_scheme)
 
@@ -594,6 +596,7 @@
              qc3d            = qc_p                   , qi3d          = qi_p            , &
              qc_cu           = qccu_p                 , qi_cu         = qicu_p          , &
              cldfrac_cu      = cldfrac_cu_p           , vcpool        = vcpool_p        , &
+             rainncv         = rainncv_p              ,                                   &
              ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde      , &
              ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme      , &
              its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte        &
@@ -727,7 +730,7 @@
  integer,dimension(:),pointer:: kpbl,k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
  integer,dimension(:),pointer:: bdyMaskCell
  real(kind=RKIND),dimension(:),pointer  :: areaCell,meshDensity
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,vcpool
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,rainncv,raincv,vcpool
  real(kind=RKIND),dimension(:),pointer  :: gsw,hfx,qfx,xland
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow,sigma_deep
  real(kind=RKIND),dimension(:,:),pointer:: zgrid
@@ -751,6 +754,7 @@
 
  call mpas_pool_get_array(diag_physics,'cuprec',cuprec)
  call mpas_pool_get_array(diag_physics,'raincv',raincv)
+ call mpas_pool_get_array(diag_physics,'rainncv',rainncv)
 
  call mpas_pool_get_array(tend_physics,'rthcuten',rthcuten)
  call mpas_pool_get_array(tend_physics,'rqvcuten',rqvcuten)
@@ -760,6 +764,7 @@
  do j = jts,jte
  do i = its,ite
     raincv_p(i,j) = raincv(i)
+    rainncv_p(i,j) = rainncv(i)
     pratec_p(i,j) = cuprec(i)
     do k = kts,kte
        rthcuten_p(i,k,j) = rthcuten(k,i)
@@ -979,7 +984,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: convection_scheme
  integer,dimension(:),pointer:: k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,vcpool,sigma_deep
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,rainncv,raincv,vcpool,sigma_deep
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu
  real(kind=RKIND),dimension(:,:),pointer:: w0avg
@@ -999,6 +1004,7 @@
 
  call mpas_pool_get_array(diag_physics,'cuprec',cuprec)
  call mpas_pool_get_array(diag_physics,'raincv',raincv)
+ call mpas_pool_get_array(diag_physics,'rainncv',rainncv)
 
  call mpas_pool_get_array(tend_physics,'rthcuten',rthcuten)
  call mpas_pool_get_array(tend_physics,'rqvcuten',rqvcuten)
