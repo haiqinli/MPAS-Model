@@ -494,6 +494,35 @@
     sgsgustcu_p,    &
     vcpool_p
 
+!... gf monan specific arrays:
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    cnvcf_p,              &
+    buoyx_p,              &
+    rcnvcfcuten_p,        &!
+    rbuoyxcuten_p,        &!
+    rupmfxcu_p,           &!
+    rdnmfxcu_p,           &!
+    v3d1_p
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    cape_p,         &!
+    cin_p,          &!
+    v2d1_p,         &
+    v2d2_p,         &
+    rmfxdpcu_p,     &!
+    rmfxdncu_p,     &!
+    rmfxmdcu_p,     &
+    rmfxshcu_p,     &
+    rtopdpcu_p,     &
+    rtopmdcu_p,     &
+    rtopshcu_p,     &
+    rbotdpcu_p
+
+ real(kind=RKIND),dimension(:,:),allocatable:: &
+    wlpool_p,     &!
+    lightn_dens_p,&
+    ctt_p
+
 !... ntiedtke specific arrays:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     rqvften_p,        &!

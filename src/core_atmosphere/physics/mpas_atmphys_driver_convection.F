@@ -18,6 +18,13 @@
 !wrf physics:
  use module_cu_gf
  use module_cu_gfl
+ use module_cu_gf_monan,only: cu_gf_monan_driver                  &
+                            , readGFConvParNML                    &
+                            , modConvParGF_initialized            &
+                            , initModConvParGF                    &
+                            , tau_ocea_cp, tau_land_cp            &
+                            , mx_buoy1, mx_buoy2                  &
+                            , satur_spec_hum
  use module_cu_kfeta
  use module_cu_tiedtke
  use module_cu_ntiedtke,only: cu_ntiedtke_driver
@@ -261,6 +268,106 @@
             enddo
             enddo
 
+    case ("cu_gf_monan")
+       if(.not.allocated(ht_p)           ) allocate(ht_p(ims:ime,jms:jme)               )
+       if(.not.allocated(kpbl_p)         ) allocate(kpbl_p(ims:ime,jms:jme)             )
+
+       if(.not.allocated(dx_p)           ) allocate(dx_p(ims:ime,jms:jme)               )
+       if(.not.allocated(area_p)         ) allocate(area_p(ims:ime,jms:jme)             )
+       if(.not.allocated(hfx_p)          ) allocate(hfx_p(ims:ime,jms:jme)              )
+       if(.not.allocated(qfx_p)          ) allocate(qfx_p(ims:ime,jms:jme)              )
+       if(.not.allocated(xland_p)        ) allocate(xland_p(ims:ime,jms:jme)            )
+       if(.not.allocated(t2m_p)          ) allocate(t2m_p(ims:ime,jms:jme)              )
+       if(.not.allocated(cape_p)         ) allocate(cape_p(ims:ime,jms:jme)             )
+       if(.not.allocated(cin_p)          ) allocate(cin_p(ims:ime,jms:jme)              )
+       if(.not.allocated(wlpool_p)       ) allocate(wlpool_p(ims:ime,jms:jme)           )
+       if(.not.allocated(xlat_p)         ) allocate(xlat_p(ims:ime,jms:jme)             )
+       if(.not.allocated(xlon_p)         ) allocate(xlon_p(ims:ime,jms:jme)             )
+       if(.not.allocated(rmfxdpcu_p)     ) allocate(rmfxdpcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rmfxdncu_p)     ) allocate(rmfxdncu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rmfxmdcu_p)     ) allocate(rmfxmdcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rmfxshcu_p)     ) allocate(rmfxshcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rtopdpcu_p)     ) allocate(rtopdpcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rtopmdcu_p)     ) allocate(rtopmdcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rtopshcu_p)     ) allocate(rtopshcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(rbotdpcu_p)     ) allocate(rbotdpcu_p(ims:ime,jms:jme)         )
+       if(.not.allocated(v2d1_p)         ) allocate(v2d1_p(ims:ime,jms:jme)             )
+       if(.not.allocated(v2d2_p)         ) allocate(v2d2_p(ims:ime,jms:jme)             )
+       if(.not.allocated(lightn_dens_p)  ) allocate(lightn_dens_p(ims:ime,jms:jme)      )
+       if(.not.allocated(sigma_deep_p)   ) allocate(sigma_deep_p(ims:ime,jms:jme)       )
+
+       if(.not.allocated(rthblten_p)     ) allocate(rthblten_p(ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(rthdynten_p)    ) allocate(rthdynten_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rthratensw_p)   ) allocate(rthratensw_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rthratenlw_p)   ) allocate(rthratenlw_p(ims:ime,kms:kme,jms:jme))
+
+       if(.not.allocated(rqvblten_p)     ) allocate(rqvblten_p(ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(rqvdynten_p)    ) allocate(rqvdynten_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rucuten_p)      ) allocate(rucuten_p(ims:ime,kms:kme,jms:jme)  )
+       if(.not.allocated(rvcuten_p)      ) allocate(rvcuten_p(ims:ime,kms:kme,jms:jme)  )
+       if(.not.allocated(rcnvcfcuten_p)  ) allocate(rcnvcfcuten_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rbuoyxcuten_p)  ) allocate(rbuoyxcuten_p(ims:ime,kms:kme,jms:jme))
+
+       if(.not.allocated(tkepbl_p)       ) allocate(tkepbl_p  (ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(elpbl_p)        ) allocate(elpbl_p   (ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(rupmfxcu_p)     ) allocate(rupmfxcu_p(ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(rdnmfxcu_p)     ) allocate(rdnmfxcu_p(ims:ime,kms:kme,jms:jme) )
+       if(.not.allocated(v3d1_p)         ) allocate(v3d1_p    (ims:ime,kms:kme,jms:jme) )
+
+       do i = its,ite
+       do k = kts,kte
+       do j = jts,jte
+          rucuten_p(i,k,j)     = 0._RKIND
+          rvcuten_p(i,k,j)     = 0._RKIND
+          rcnvcfcuten_p(i,k,j) = 0._RKIND
+          rbuoyxcuten_p(i,k,j) = 0._RKIND
+          tkepbl_p(i,k,j)      = 0._RKIND
+          elpbl_p(i,k,j)       = 0._RKIND
+          rupmfxcu_p(i,k,j)    = 0._RKIND
+          rdnmfxcu_p(i,k,j)    = 0._RKIND
+       enddo
+       enddo
+       enddo
+
+       do i = its,ite
+       do j = jts,jte
+          rmfxdpcu_p(i,j)   = 0._RKIND
+          rmfxdncu_p(i,j)   = 0._RKIND
+          rmfxmdcu_p(i,j)   = 0._RKIND
+          rmfxshcu_p(i,j)   = 0._RKIND
+          rtopdpcu_p(i,j)   = 0._RKIND
+          rtopmdcu_p(i,j)   = 0._RKIND
+          rtopshcu_p(i,j)   = 0._RKIND
+          rbotdpcu_p(i,j)   = 0._RKIND
+          v2d2_p(i,j)       = 0._RKIND
+          v2d1_p(i,j)       = 0._RKIND
+          sigma_deep_p(i,j) = 0._RKIND
+       enddo
+       enddo
+       do i = its,ite
+       do k = kts,kte
+       do j = jts,jte
+          v3d1_p(i,k,j) = 0._RKIND
+       enddo
+       enddo
+       enddo
+
+       call mpas_pool_get_config(configs,'config_gfl_sub3d',config_gfl_sub3d)
+            if(.not.allocated(sub3d_rthcuten_p)) allocate(sub3d_rthcuten_p(ims:ime,kms:kme,jms:jme)  )
+            if(.not.allocated(sub3d_rqvcuten_p)) allocate(sub3d_rqvcuten_p(ims:ime,kms:kme,jms:jme)  )
+            if(.not.allocated(sub3d_rucuten_p))  allocate(sub3d_rucuten_p (ims:ime,kms:kme,jms:jme)  )
+            if(.not.allocated(sub3d_rvcuten_p))  allocate(sub3d_rvcuten_p (ims:ime,kms:kme,jms:jme)  )
+            do i = its,ite
+            do k = kts,kte
+            do j = jts,jte
+               sub3d_rthcuten_p(i,k,j)  = 0._RKIND
+               sub3d_rqvcuten_p(i,k,j)  = 0._RKIND
+               sub3d_rucuten_p(i,k,j)   = 0._RKIND
+               sub3d_rvcuten_p(i,k,j)   = 0._RKIND
+            enddo
+            enddo
+            enddo
+
     case ("cu_kain_fritsch")
        if(.not.allocated(dx_p)       ) allocate(dx_p(ims:ime,jms:jme)              )
        if(.not.allocated(area_p)     ) allocate(area_p(ims:ime,jms:jme)            )
@@ -453,6 +560,54 @@
           if(allocated(chem_p)      ) deallocate(chem_p     )
        endif
 
+    case ("cu_gf_monan")
+       if(allocated(ht_p)           ) deallocate(ht_p           )
+       if(allocated(kpbl_p)         ) deallocate(kpbl_p         )
+
+       if(allocated(dx_p)           ) deallocate(dx_p           )
+       if(allocated(area_p)         ) deallocate(area_p         )
+       if(allocated(hfx_p)          ) deallocate(hfx_p          )
+       if(allocated(qfx_p)          ) deallocate(qfx_p          )
+       if(allocated(xland_p)        ) deallocate(xland_p        )
+       if(allocated(t2m_p)          ) deallocate(t2m_p          )
+       if(allocated(cape_p)         ) deallocate(cape_p         )
+       if(allocated(cin_p)          ) deallocate(cin_p          )
+       if(allocated(wlpool_p)       ) deallocate(wlpool_p       )
+       if(allocated(xlat_p)         ) deallocate(xlat_p         )
+       if(allocated(xlon_p)         ) deallocate(xlon_p         )
+       if(allocated(rmfxmdcu_p)     ) deallocate(rmfxmdcu_p     )
+       if(allocated(rmfxshcu_p)     ) deallocate(rmfxshcu_p     )
+       if(allocated(rtopdpcu_p)     ) deallocate(rtopdpcu_p     )
+       if(allocated(rtopmdcu_p)     ) deallocate(rtopmdcu_p     )
+       if(allocated(rtopshcu_p)     ) deallocate(rtopshcu_p     )
+       if(allocated(rbotdpcu_p)     ) deallocate(rbotdpcu_p     )
+       if(allocated(v2d1_p)         ) deallocate(v2d1_p         )
+       if(allocated(v2d2_p)         ) deallocate(v2d2_p         )
+       if(allocated(lightn_dens_p)  ) deallocate(lightn_dens_p  )
+       if(allocated(sigma_deep_p)   ) deallocate(sigma_deep_p   )
+ 
+       if(allocated(rthblten_p)     ) deallocate(rthblten_p     )
+       if(allocated(rthdynten_p)    ) deallocate(rthdynten_p    )
+       if(allocated(rthraten_p)     ) deallocate(rthraten_p     )
+       if(allocated(rqvblten_p)     ) deallocate(rqvblten_p     )
+       if(allocated(rqvdynten_p)    ) deallocate(rqvdynten_p    )
+       if(allocated(rucuten_p)      ) deallocate(rucuten_p      )
+       if(allocated(rvcuten_p)      ) deallocate(rvcuten_p      )
+       if(allocated(rcnvcfcuten_p)  ) deallocate(rcnvcfcuten_p  )
+       if(allocated(rbuoyxcuten_p)  ) deallocate(rbuoyxcuten_p  )
+
+       if(allocated(tkepbl_p)       ) deallocate(tkepbl_p       )
+       if(allocated(elpbl_p)        ) deallocate(elpbl_p        )
+       if(allocated(rupmfxcu_p)     ) deallocate(rupmfxcu_p     )
+       if(allocated(rdnmfxcu_p)     ) deallocate(rdnmfxcu_p     )
+       if(allocated(rmfxdpcu_p)     ) deallocate(rmfxdpcu_p     )
+       if(allocated(rmfxdncu_p)     ) deallocate(rmfxdncu_p     )
+       if(allocated(v3d1_p)         ) deallocate(v3d1_p         )
+       if(allocated(sub3d_rthcuten_p)) deallocate(sub3d_rthcuten_p)
+       if(allocated(sub3d_rqvcuten_p)) deallocate(sub3d_rqvcuten_p)
+       if(allocated(sub3d_rucuten_p) ) deallocate(sub3d_rucuten_p )
+       if(allocated(sub3d_rvcuten_p) ) deallocate(sub3d_rvcuten_p )
+
     case ("cu_kain_fritsch")
        if(allocated(dx_p)         ) deallocate(dx_p         )
        if(allocated(area_p)       ) deallocate(area_p       )
@@ -513,6 +668,8 @@
 !local variables:
  integer:: iCell
 
+!local var for gf_monan
+ integer, pointer :: config_gf_cporg,config_gf_pcvol,config_gf_gustf
  integer, pointer :: config_gfl_sub3d
  integer :: mynum, init_stat
 
@@ -534,6 +691,17 @@
        endif
        call kf_lutab(svp1,svp2,svp3,svpt0)
 
+    case ("cu_gf_monan")
+       call mpas_pool_get_config(configs,'config_gf_gustf',config_gf_gustf)
+       call mpas_pool_get_config(configs,'config_gf_cporg',config_gf_cporg)
+       call mpas_pool_get_config(configs,'config_gf_pcvol',config_gf_pcvol)
+       call mpas_pool_get_config(configs,'config_gfl_sub3d',config_gfl_sub3d)
+       modConvParGF_initialized = .false.
+       init_stat = initModConvParGF()
+       mynum = dminfo % my_proc_id
+       !print*," mynum", dminfo % my_proc_id
+       call readGFConvParNML(mynum,IO_NODE,config_gf_cporg,config_gf_pcvol,config_gf_gustf &
+                            ,config_gfl_sub3d)
     case default
 
  end select convection_select
@@ -709,6 +877,54 @@
                             )
        call mpas_timer_stop('Grell-Freitas-Li')
 
+    case ("cu_gf_monan")
+       call mpas_timer_start('Grell-Freitas-MONAN')
+       call cu_gf_monan_driver(                                                           &
+             dt              = dt_dyn                 , confrq        = dt_cu           , &
+             dx_p            = dx_p                   , areaCell      = area_p          , &
+             lats            = xlat_p                 , lons          = xlon_p          , &
+             u               = u_p                    , v             = v_p             , &
+             w               = w_p                    , temp          = t_p             , &
+             rvap            = qv_p                   , rho           = rho_p           , &
+             press           = pres_hyd_p             , pi            = pi_p            , &
+             p8w             = pres2_hyd_p            , dz8w          = dz_p            , &
+             topt            = ht_p                   , xland         = xland_p         , &
+             sflux_t         = hfx_p                  , sflux_r       = qfx_p           , &
+             temp2m          = t2m_p                  , wlpool        = wlpool_p        , &
+             mpas_cape       = cape_p                 , mpas_cin      = cin_p           , &
+             kpbl            = kpbl_p                 , tke_pbl       = tkepbl_p        , &
+             turb_len_scale  = elpbl_p                ,                                   &
+             buoyx           = buoyx_p                , cnvcf         = cnvcf_p         , &
+             rthblten        = rthblten_p             , rqvblten      = rqvblten_p      , &
+             rthratenlw      = rthratenlw_p           , rthratensw    = rthratensw_p    , &
+             rthdyten        = rthdynten_p            , rqvdyten      = rqvdynten_p     , &
+
+             raincv          = raincv_p               , conprr        = pratec_p        , &
+             lightn_dens     = lightn_dens_p          , sigma_deep    = sigma_deep_p    , &
+             rthcuten        = rthcuten_p             , rqvcuten      = rqvcuten_p      , &
+             rqccuten        = rqccuten_p             , rqicuten      = rqicuten_p      , &
+             rucuten         = rucuten_p              , rvcuten       = rvcuten_p       , &
+             rbuoyxcuten     = rbuoyxcuten_p          , rcnvcfcuten   = rcnvcfcuten_p   , &
+
+             sub3d_rthcuten  = sub3d_rthcuten_p       , sub3d_rqvcuten= sub3d_rqvcuten_p, &
+             sub3d_rucuten   = sub3d_rucuten_p        , sub3d_rvcuten = sub3d_rvcuten_p , &
+
+             rupmfxcu        = rupmfxcu_p             , rdnmfxcu      = rdnmfxcu_p      , &
+
+             rmfxdpcu        = rmfxdpcu_p             , rmfxdncu      = rmfxdncu_p      , &
+             rmfxmdcu        = rmfxmdcu_p                                               , &
+             rmfxshcu        = rmfxshcu_p             , rtopdpcu      = rtopdpcu_p      , &
+             rtopmdcu        = rtopmdcu_p             , rtopshcu      = rtopshcu_p      , &
+             rbotdpcu        = rbotdpcu_p                                               , &
+             var2d1          = v2d1_p                 , var2d2        = v2d2_p          , &
+             var3d1          = v3d1_p                                                   , &
+             ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde      , &
+             ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme      , &
+             its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte      , &
+             itimestep       = itimestep              , mynum         = dminfo%my_proc_id )
+
+       call mpas_timer_stop('Grell-Freitas-MONAN')
+
     case ("cu_kain_fritsch")
        if(itimestep == 1) then
           ktau = itimestep
@@ -833,20 +1049,22 @@
  real(kind=RKIND),intent(in):: dt_dyn
 
 !local pointers:
- character(len=StrKIND),pointer:: convection_scheme
+ character(len=StrKIND),pointer:: convection_scheme,config_pbl_scheme
  integer,dimension(:),pointer:: kpbl,k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
  integer,dimension(:),pointer:: bdyMaskCell
  real(kind=RKIND),dimension(:),pointer  :: areaCell,meshDensity
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,wlpool,lightn_dens
  real(kind=RKIND),dimension(:),pointer  :: rainncv,vcpool,sigma_deep,sigma_deep_far
- real(kind=RKIND),dimension(:),pointer  :: gsw,hfx,qfx,xland
+ real(kind=RKIND),dimension(:),pointer  :: gsw,hfx,qfx,xland,t2m,cape,cin
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
+ real(kind=RKIND),dimension(:),pointer  :: latCell,lonCell
  real(kind=RKIND),dimension(:,:),pointer:: zgrid
- real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu
+ real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu,tke_pbl,el_pbl,qke
  real(kind=RKIND),dimension(:,:),pointer:: w0avg
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten,rqicuten,rqrcuten,rqscuten 
  real(kind=RKIND),dimension(:,:),pointer:: rthblten,rthdynten,rthratenlw,rthratensw
  real(kind=RKIND),dimension(:,:),pointer:: rqvblten,rqvdynten,rucuten,rvcuten
+ real(kind=RKIND),dimension(:,:),pointer:: rcnvcfcuten, rbuoyxcuten
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_cu,refl10cm_cu
 
  integer,pointer :: chemistry_start,chemistry_end
@@ -864,6 +1082,7 @@
 
  call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
 
+ if(trim(convection_scheme) /= "cu_gf_monan") then
  call mpas_pool_get_array(diag_physics,'cuprec',cuprec)
  call mpas_pool_get_array(diag_physics,'raincv',raincv)
  call mpas_pool_get_array(diag_physics,'rainncv',rainncv)
@@ -886,6 +1105,7 @@
     enddo
  enddo
  enddo
+ end if
 
  if (do_chemistry) then
     call mpas_pool_get_array(state,'scalars',scalars,1)
@@ -905,6 +1125,88 @@
  endif
 
  convection_select: select case(convection_scheme)
+
+    case ("cu_gf_monan")
+
+         call mpas_pool_get_config(configs,'config_len_disp',len_disp)
+
+         call mpas_pool_get_array(mesh,'areaCell'   ,areaCell   )
+         call mpas_pool_get_array(mesh,'meshDensity',meshDensity)
+         call mpas_pool_get_array(mesh,'zgrid'      ,zgrid      )
+         call mpas_pool_get_array(mesh,'latCell'    ,latCell    )
+         call mpas_pool_get_array(mesh,'lonCell'    ,lonCell    )
+
+         call mpas_pool_get_array(sfc_input,'xland',xland)
+
+         call mpas_pool_get_array(diag,'cape'               ,cape    )
+         call mpas_pool_get_array(diag,'cin'                ,cin     )
+         call mpas_pool_get_array(diag_physics,'hfx'        ,hfx     )
+         call mpas_pool_get_array(diag_physics,'qfx'        ,qfx     )
+         call mpas_pool_get_array(diag_physics,'t2m'        ,t2m     )
+         call mpas_pool_get_array(diag_physics,'kpbl'       ,kpbl    )
+         call mpas_pool_get_array(diag_physics,'wlpool'     ,wlpool  )
+         call mpas_pool_get_array(diag_physics,'lightn_dens',lightn_dens)
+         call mpas_pool_get_array(diag_physics,'sigma_deep' ,sigma_deep)
+
+         call mpas_pool_get_array(tend_physics,'rqvblten'   ,rqvblten  )
+         call mpas_pool_get_array(tend_physics,'rqvdynten'  ,rqvdynten )
+         call mpas_pool_get_array(tend_physics,'rthblten'   ,rthblten  )
+         call mpas_pool_get_array(tend_physics,'rthdynten'  ,rthdynten )
+         call mpas_pool_get_array(tend_physics,'rthratenlw' ,rthratenlw)
+         call mpas_pool_get_array(tend_physics,'rthratensw' ,rthratensw)
+         call mpas_pool_get_array(tend_physics,'rcnvcfcuten',rcnvcfcuten)
+         call mpas_pool_get_array(tend_physics,'rbuoyxcuten',rbuoyxcuten)
+
+         do j = jts,jte
+         do i = its,ite
+            dx_p(i,j) = len_disp / meshDensity(i)**0.25
+            area_p(i,j)          = areaCell(i)
+            ht_p(i,j)            = zgrid(1,i)
+            xland_p(i,j)         = xland(i)
+            hfx_p(i,j)           = hfx(i)
+            qfx_p(i,j)           = qfx(i)
+            t2m_p(i,j)           = t2m(i)
+            kpbl_p(i,j)          = kpbl(i)
+            cape_p(i,j)          = cape(i)
+            cin_p(i,j)           = cin(i)
+            wlpool_p(i,j)        = wlpool(i)
+            lightn_dens_p(i,j)   = lightn_dens(i)
+            xlat_p(i,j)          = latCell(i) / degrad
+            xlon_p(i,j)          = lonCell(i) / degrad
+            sigma_deep_p(i,j)    = sigma_deep(i)
+
+            do k = kts,kte
+
+               rthblten_p(i,k,j)    = rthblten(k,i)
+               rthdynten_p(i,k,j)   = rthdynten(k,i)
+               rthratenlw_p(i,k,j)  = rthratenlw(k,i)
+               rthratensw_p(i,k,j)  = rthratensw(k,i)
+               rqvblten_p(i,k,j)    = rqvblten(k,i)
+               rqvdynten_p(i,k,j)   = rqvdynten(k,i)
+               rbuoyxcuten_p(i,k,j) = 0.0
+               rcnvcfcuten_p(i,k,j) = 0.0
+
+            enddo
+         enddo
+         enddo
+
+         call mpas_pool_get_config(configs, 'config_pbl_scheme', config_pbl_scheme)
+         if (trim(config_pbl_scheme) == "bl_mynn") then
+               !call mpas_pool_get_array(diag_physics,'tke_pbl'   ,tke_pbl )
+               call mpas_pool_get_array(diag_physics,'qke'       ,qke )
+               call mpas_pool_get_array(diag_physics,'el_pbl'    ,el_pbl  )
+               do j = jts,jte
+               do i = its,ite
+                  do k = kts,kte
+                     !--- srf: for some reason, in this MPAS version "tke_pbl" is always zero
+                     !--- using 'QKE' which is defined as 2 * TKE 
+                     !tkepbl_p(i,k,j) = tke_pbl(k,i)
+                     tkepbl_p(i,k,j) = 0.5*qke(k,i)
+                     elpbl_p(i,k,j)  = el_pbl(k,i)
+                  enddo
+               enddo
+               enddo
+         end if
 
     case ("cu_grell_freitas")
        call mpas_pool_get_config(configs,'config_len_disp',len_disp)
@@ -1189,7 +1491,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: convection_scheme
  integer,dimension(:),pointer:: k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
- real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv
+ real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,lightn_dens
  real(kind=RKIND),dimension(:),pointer  :: rainncv,vcpool,sigma_deep,sigma_deep_far
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu
@@ -1201,9 +1503,18 @@
  integer,pointer:: config_gfl_sub3d,nCellsSolve
  integer, dimension(:), pointer:: nEdgesOnCell,bdyMaskCell,ncellsOnCellsOnCell
  integer, dimension(:,:), pointer:: cellsOnCell,cellsOnCellsOnCell
+ logical, pointer :: config_apply_lbcs
  real(kind=RKIND),dimension(:,:,:),pointer:: chem, scalars
  integer,pointer :: chemistry_start,chemistry_end
  logical result
+ !local pointers specific for gf_monan convection scheme
+ real(kind=RKIND),dimension(:),pointer  :: rmfxdpcu,rmfxdncu,rmfxmdcu,rmfxshcu
+ real(kind=RKIND),dimension(:),pointer  :: rtopdpcu,rtopmdcu,rtopshcu
+ real(kind=RKIND),dimension(:),pointer  :: rbotdpcu,v2d1,v2d2
+ real(kind=RKIND),dimension(:,:),pointer:: v3d1
+ real(kind=RKIND),dimension(:,:),pointer:: rcnvcfcuten, rbuoyxcuten
+ real(kind=RKIND),dimension(:,:),pointer:: rupmfxcu, rdnmfxcu
+ real(kind=RKIND) :: factor_lbc
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -1249,6 +1560,178 @@
  endif
 
  convection_select: select case(convection_scheme)
+
+    case ("cu_gf_monan")
+       call mpas_pool_get_array(diag_physics,'rmfxdpcu'    ,rmfxdpcu   )
+       call mpas_pool_get_array(diag_physics,'rmfxdncu'    ,rmfxdncu   )
+       call mpas_pool_get_array(diag_physics,'rmfxmdcu'    ,rmfxmdcu   )
+       call mpas_pool_get_array(diag_physics,'rmfxshcu'    ,rmfxshcu   )
+       call mpas_pool_get_array(diag_physics,'rtopdpcu'    ,rtopdpcu   )
+       call mpas_pool_get_array(diag_physics,'rtopmdcu'    ,rtopmdcu   )
+       call mpas_pool_get_array(diag_physics,'rtopshcu'    ,rtopshcu   )
+       call mpas_pool_get_array(diag_physics,'rbotdpcu'    ,rbotdpcu   )
+       call mpas_pool_get_array(diag_physics,'v2d1'        ,v2d1       )
+       call mpas_pool_get_array(diag_physics,'v2d2'        ,v2d2       )
+       call mpas_pool_get_array(diag_physics,'lightn_dens' ,lightn_dens)
+       call mpas_pool_get_array(diag_physics,'sigma_deep'  ,sigma_deep )
+
+       call mpas_pool_get_array(diag_physics,'rupmfxcu'    ,rupmfxcu   )
+       call mpas_pool_get_array(diag_physics,'rdnmfxcu'    ,rdnmfxcu   )
+       call mpas_pool_get_array(diag_physics,'v3d1'        ,v3d1       )
+
+       call mpas_pool_get_array(tend_physics,'rucuten'     ,rucuten    )
+       call mpas_pool_get_array(tend_physics,'rvcuten'     ,rvcuten    )
+       call mpas_pool_get_array(tend_physics,'rbuoyxcuten' ,rbuoyxcuten)
+       call mpas_pool_get_array(tend_physics,'rcnvcfcuten' ,rcnvcfcuten)
+
+       do j = jts,jte
+       do i = its,ite
+          do k = kts,kte
+             rucuten(k,i)      = rucuten_p(i,k,j)
+             rvcuten(k,i)      = rvcuten_p(i,k,j)
+             rbuoyxcuten(k,i)  = rbuoyxcuten_p(i,k,j)
+             rcnvcfcuten(k,i)  = rcnvcfcuten_p(i,k,j)
+             rupmfxcu(k,i)     = rupmfxcu_p(i,k,j)
+             rdnmfxcu(k,i)     = rdnmfxcu_p(i,k,j)
+         enddo
+       enddo
+       enddo
+       !- 2-d
+       do j = jts,jte
+       do i = its,ite
+          lightn_dens(i) = lightn_dens_p(i,j)
+          sigma_deep(i) = sigma_deep_p(i,j)
+          rmfxdpcu(i) = rmfxdpcu_p(i,j)
+          rmfxdncu(i) = rmfxdncu_p(i,j)
+          rmfxmdcu(i) = rmfxmdcu_p(i,j)
+          rmfxshcu(i) = rmfxshcu_p(i,j)
+          rtopdpcu(i) = rtopdpcu_p(i,j)
+          rtopmdcu(i) = rtopmdcu_p(i,j)
+          rtopshcu(i) = rtopshcu_p(i,j)
+          rbotdpcu(i) = rbotdpcu_p(i,j)
+       enddo
+       enddo
+
+       !- dummy vars for debug/output 
+       do j = jts,jte
+       do i = its,ite
+          v2d1(i)  = v2d1_p(i,j)
+         !--- used in sfclayer
+         !v2d2(i)  = v2d2_p(i,j)
+          do k = kts,kte
+             v3d1(k,i) = v3d1_p(i,k,j)
+          enddo
+       enddo
+       enddo
+
+       !-- including option of the env subsidence lateral spreading              
+       call mpas_pool_get_config(configs,'config_gfl_sub3d',config_gfl_sub3d)
+
+       if(config_gfl_sub3d > 0) then
+            call mpas_pool_get_array(tend_physics,'sub3d_rucuten'  ,sub3d_rucuten )
+            call mpas_pool_get_array(tend_physics,'sub3d_rvcuten'  ,sub3d_rvcuten )
+            call mpas_pool_get_array(tend_physics,'sub3d_rqvcuten' ,sub3d_rqvcuten)
+            call mpas_pool_get_array(tend_physics,'sub3d_rthcuten' ,sub3d_rthcuten)
+
+            do j = jts,jte
+            do i = its,ite
+               do k = kts,kte
+                  sub3d_rthcuten(k,i) = sub3d_rthcuten_p(i,k,j)
+                  sub3d_rqvcuten(k,i) = sub3d_rqvcuten_p(i,k,j)
+                  sub3d_rucuten(k,i)  = sub3d_rucuten_p(i,k,j)
+                  sub3d_rvcuten(k,i)  = sub3d_rvcuten_p(i,k,j)
+               enddo
+            enddo
+            enddo
+            !
+            !
+            !-- part 1: remove the subsidence tendencies from the total tendencies
+            !
+            call mpas_pool_get_dimension(mesh, 'nCellsSolve', nCellsSolve)
+            do i = 1, nCellsSolve
+            do k = 1, nVertLevels
+                 rucuten(k,i)  = rucuten(k,i)  - sub3d_rucuten(k,i)
+                 rvcuten(k,i)  = rvcuten(k,i)  - sub3d_rvcuten(k,i)
+                 rthcuten(k,i) = rthcuten(k,i) - sub3d_rthcuten(k,i)
+                 rqvcuten(k,i) = rqvcuten(k,i) - sub3d_rqvcuten(k,i)
+            enddo
+            enddo
+
+            !-- part 2: broadcast the subsidence tendencies
+            call exchange_halo_group(block % domain, 'physics:sub3d_cuten')
+
+            !-- part 3: spread the subsidence tendencies to the 1st neighboors
+            call mpas_pool_get_array(mesh, 'cellsOnCell', cellsOnCell)
+            call mpas_pool_get_array(mesh, 'nEdgesOnCell', nEdgesOnCell)
+
+            do iCell = 1, nCellsSolve
+              do k = 1, nVertLevels
+                 rthcuten(k,iCell) = rthcuten(k,iCell) + sigma_deep(iCell) * sub3d_rthcuten(k,iCell)
+                 rqvcuten(k,iCell) = rqvcuten(k,iCell) + sigma_deep(iCell) * sub3d_rqvcuten(k,iCell)
+                 rucuten(k,iCell)  = rucuten(k,iCell)  + sigma_deep(iCell) * sub3d_rucuten(k,iCell)
+                 rvcuten(k,iCell)  = rvcuten(k,iCell)  + sigma_deep(iCell) * sub3d_rvcuten(k,iCell)
+
+                 !-- loop over the neighbours of the grid cell 'iCell'
+                 do i = 1, nEdgesOnCell(iCell)
+                   ineighbor = cellsOnCell(i,iCell)
+                   rthcuten(k,iCell) = rthcuten(k,iCell) + &
+                                       (1._RKIND - sigma_deep(ineighbor))*sub3d_rthcuten(k,ineighbor)/ &
+                                       real(nEdgesOnCell(ineighbor),RKIND)
+                   rqvcuten(k,iCell) = rqvcuten(k,iCell) + &
+                                       (1._RKIND - sigma_deep(ineighbor))*sub3d_rqvcuten(k,ineighbor)/ &
+                                       real(nEdgesOnCell(ineighbor),RKIND)
+                   rucuten(k,iCell) = rucuten(k,iCell) + &
+                                       (1._RKIND - sigma_deep(ineighbor))*sub3d_rucuten(k,ineighbor)/ &
+                                       real(nEdgesOnCell(ineighbor),RKIND)
+                   rvcuten(k,iCell) = rvcuten(k,iCell) + &
+                                       (1._RKIND - sigma_deep(ineighbor))*sub3d_rvcuten(k,ineighbor)/ &
+                                       real(nEdgesOnCell(ineighbor),RKIND)
+                 enddo
+              enddo
+            enddo
+
+       endif
+       !
+       !-- fix convection outputs at the relaxation zone of limited-area model configurations
+       !nRelaxZone
+       call mpas_pool_get_config(configs, 'config_apply_lbcs', config_apply_lbcs)
+       if (config_apply_lbcs) then
+
+          call mpas_pool_get_array(mesh,'bdyMaskCell',bdyMaskCell)
+          do i = its,ite
+            !!!cycle
+            if(bdyMaskCell(i) > 0.) then
+                  !factor_lbc = (6. - float(bdyMaskCell(i)))/7. + 1./7.
+                  factor_lbc = float(maxval(bdyMaskCell)-bdyMaskCell(i))/maxval(bdyMaskCell)
+                  !factor_lbc = (real(nRelaxZone) -1 - bdyMaskCell(i))/real(nRelaxZone) + 1./real(nRelaxZone)
+                  if(factor_lbc>1. .or. factor_lbc <0.) stop 'factor LBC'
+                  !-- 1d var
+                  raincv(i)      = raincv(i)      * factor_lbc
+                  cuprec(i)      = cuprec(i)      * factor_lbc
+                  rmfxdpcu(i)    = rmfxdpcu(i)    * factor_lbc
+                  rmfxdncu(i)    = rmfxdncu(i)    * factor_lbc
+                  rmfxmdcu(i)    = rmfxmdcu(i)    * factor_lbc
+                  rmfxshcu(i)    = rmfxshcu(i)    * factor_lbc
+                  sigma_deep(i)  = sigma_deep(i)  * factor_lbc
+                  lightn_dens(i) = lightn_dens(i) * factor_lbc
+
+                  !-- 2d var
+                  rthcuten(:,i)    = rthcuten(:,i)    * factor_lbc
+                  rqvcuten(:,i)    = rqvcuten(:,i)    * factor_lbc
+                  rqccuten(:,i)    = rqccuten(:,i)    * factor_lbc
+                  rqicuten(:,i)    = rqicuten(:,i)    * factor_lbc
+                  rucuten(:,i)     = rucuten(:,i)     * factor_lbc
+                  rvcuten(:,i)     = rvcuten(:,i)     * factor_lbc
+                  rbuoyxcuten(:,i) = rbuoyxcuten(:,i) * factor_lbc
+                  rcnvcfcuten(:,i) = rcnvcfcuten(:,i) * factor_lbc
+            endif
+          enddo
+          !if(config_gfl_sub3d > 0) then (think later if this is really needed)
+          !   do i = 1, nCellsSolve
+          !         factor_lbc = (6. - bdyMaskCell(i))/7. + 1./7.
+          !   (...)   
+          !endif
+       endif  ! of LBC
 
     case ("cu_grell_freitas")
        call mpas_pool_get_array(diag_physics,'cubot'        ,cubot        )
@@ -1563,6 +2046,8 @@
 !local variables and arrays:
  integer:: i
 
+
+!--add gf_monan coldpool later (Haiqin Li 10/22/2025)
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_bucket_rainc',bucket_rainc)

@@ -446,6 +446,29 @@
           enddo
           enddo
 
+       case('cu_gf_monan')
+              if (rk_step == 1 .and. dynamics_substep == 1) then
+                 call exchange_halo_group(block % domain, 'physics:cuten')
+                 call tend_toEdges(block,mesh,rucuten,rvcuten,rucuten_Edge)
+
+                 tend_u_phys(1:nVertLevels,1:nEdges) =  tend_u_phys(1:nVertLevels,1:nEdges) &
+                                                     + rucuten_Edge(1:nVertLevels,1:nEdges)
+              end if
+              do i = 1, nEdgesSolve
+              do k = 1, nVertLevels
+                 tend_u(k,i)=tend_u(k,i)+rucuten_Edge(k,i)*mass_edge(k,i)
+              enddo
+              enddo
+!srf- the sources and sinks of the scalars below are included in the routine "update_convection_step2" 
+!     so, they are comment out here to avoid double contribution
+!              do i = 1, nCellsSolve
+!              do k = 1, nVertLevels
+!                 tend_scalars(index_cnvcf,k,i) = tend_scalars(index_cnvcf,k,i) + rcnvcfcuten(k,i)*mass(k,i)
+!                 tend_scalars(index_buoyx,k,i) = tend_scalars(index_buoyx,k,i) + rbuoyxcuten(k,i)*mass(k,i)
+!              enddo
+!              enddo
+!srf---------------------------------------------------------------------------------------------------------
+
        case default
     end select cu_select
  endif
