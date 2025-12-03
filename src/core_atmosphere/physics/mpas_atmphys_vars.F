@@ -521,7 +521,13 @@
  real(kind=RKIND),dimension(:,:),allocatable:: &
     wlpool_p,     &!
     lightn_dens_p,&
-    ctt_p
+    ctt_p        ,&
+    dp_dens_p    ,&
+    sh_dens_p    ,&
+    cg_dens_p    ,&
+    dp_ierr_p    ,&
+    sh_ierr_p    ,&
+    cg_ierr_p
 
 !... ntiedtke specific arrays:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &

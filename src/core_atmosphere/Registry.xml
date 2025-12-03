@@ -3309,6 +3309,42 @@
                      packages="cu_grell_freitas_li_in"/>
 
 		<!-- ... GF MONAN ONLY: -->
+               <var name="dp_ierr" type="real" dimensions="nCells Time" units=""
+                      description="reason deep convection was not activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="cg_ierr" type="real" dimensions="nCells Time" units=""
+                      description="reason congestus convection was not activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="sh_ierr" type="real" dimensions="nCells Time" units=""
+                      description="reason shallow convection was not activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="dp_dens" type="real" dimensions="nCells Time" units=""
+                      description="number of times deep convection was activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="acc_dp_dens" type="real" dimensions="nCells Time" units=""
+                      description="accumulated number of times deep convection was activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="sh_dens" type="real" dimensions="nCells Time" units=""
+                      description="number of times shallow convection was activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="acc_sh_dens" type="real" dimensions="nCells Time" units=""
+                      description="accumulated number of times shallow convection was activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="cg_dens" type="real" dimensions="nCells Time" units=""
+                      description="number of times congestus convection was activated"
+                      packages="cu_gf_monan_in"/>
+
+                <var name="acc_cg_dens" type="real" dimensions="nCells Time" units=""
+                      description="accumulated number of times congestus convection was activated"
+                      packages="cu_gf_monan_in"/>
+
                <var name="lightn_dens" type="real" dimensions="nCells Time" units="km^{-2} s^{-1}"
                      description="convective lightning density rate"
                      packages="cu_gf_monan_in"/>

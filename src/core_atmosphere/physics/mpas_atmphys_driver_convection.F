@@ -294,6 +294,13 @@
        if(.not.allocated(v2d1_p)         ) allocate(v2d1_p(ims:ime,jms:jme)             )
        if(.not.allocated(v2d2_p)         ) allocate(v2d2_p(ims:ime,jms:jme)             )
        if(.not.allocated(lightn_dens_p)  ) allocate(lightn_dens_p(ims:ime,jms:jme)      )
+       if(.not.allocated(dp_dens_p)      ) allocate(dp_dens_p(ims:ime,jms:jme)          )
+       if(.not.allocated(sh_dens_p)      ) allocate(sh_dens_p(ims:ime,jms:jme)          )
+       if(.not.allocated(cg_dens_p)      ) allocate(cg_dens_p(ims:ime,jms:jme)          )
+       if(.not.allocated(dp_ierr_p)      ) allocate(dp_ierr_p(ims:ime,jms:jme)          )
+       if(.not.allocated(sh_ierr_p)      ) allocate(sh_ierr_p(ims:ime,jms:jme)          )
+       if(.not.allocated(cg_ierr_p)      ) allocate(cg_ierr_p(ims:ime,jms:jme)          )
+
        if(.not.allocated(sigma_deep_p)   ) allocate(sigma_deep_p(ims:ime,jms:jme)       )
 
        if(.not.allocated(rthblten_p)     ) allocate(rthblten_p(ims:ime,kms:kme,jms:jme) )
@@ -584,6 +591,12 @@
        if(allocated(v2d1_p)         ) deallocate(v2d1_p         )
        if(allocated(v2d2_p)         ) deallocate(v2d2_p         )
        if(allocated(lightn_dens_p)  ) deallocate(lightn_dens_p  )
+       if(allocated(dp_dens_p)      ) deallocate(dp_dens_p      )
+       if(allocated(sh_dens_p)      ) deallocate(sh_dens_p      )
+       if(allocated(cg_dens_p)      ) deallocate(cg_dens_p      )
+       if(allocated(dp_ierr_p)      ) deallocate(dp_ierr_p      )
+       if(allocated(sh_ierr_p)      ) deallocate(sh_ierr_p      )
+       if(allocated(cg_ierr_p)      ) deallocate(cg_ierr_p      )
        if(allocated(sigma_deep_p)   ) deallocate(sigma_deep_p   )
  
        if(allocated(rthblten_p)     ) deallocate(rthblten_p     )
@@ -921,7 +934,11 @@
              ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde      , &
              ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme      , &
              its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte      , &
-             itimestep       = itimestep              , mynum         = dminfo%my_proc_id )
+             itimestep       = itimestep              , mynum         = dminfo%my_proc_id,&
+             dp_dens         = dp_dens_p              , sh_dens       = sh_dens_p        ,&
+             cg_dens         = cg_dens_p                                                 ,&
+             dp_ierr         = dp_ierr_p              , sh_ierr       = sh_ierr_p        ,&
+             cg_ierr         = cg_ierr_p                                                 )
 
        call mpas_timer_stop('Grell-Freitas-MONAN')
 
@@ -1055,6 +1072,8 @@
  real(kind=RKIND),dimension(:),pointer  :: areaCell,meshDensity
  real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,wlpool,lightn_dens
  real(kind=RKIND),dimension(:),pointer  :: rainncv,vcpool,sigma_deep,sigma_deep_far
+ real(kind=RKIND),dimension(:),pointer  :: dp_dens,sh_dens,cg_dens
+ real(kind=RKIND),dimension(:),pointer  :: dp_ierr,sh_ierr,cg_ierr
  real(kind=RKIND),dimension(:),pointer  :: gsw,hfx,qfx,xland,t2m,cape,cin
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:),pointer  :: latCell,lonCell
@@ -1146,6 +1165,14 @@
          call mpas_pool_get_array(diag_physics,'kpbl'       ,kpbl    )
          call mpas_pool_get_array(diag_physics,'wlpool'     ,wlpool  )
          call mpas_pool_get_array(diag_physics,'lightn_dens',lightn_dens)
+         call mpas_pool_get_array(diag_physics,'dp_dens'    ,dp_dens )
+         call mpas_pool_get_array(diag_physics,'sh_dens'    ,sh_dens )
+         call mpas_pool_get_array(diag_physics,'cg_dens'    ,cg_dens )
+         call mpas_pool_get_array(diag_physics,'dp_ierr'    ,dp_ierr )
+         call mpas_pool_get_array(diag_physics,'sh_ierr'    ,sh_ierr )
+         call mpas_pool_get_array(diag_physics,'cg_ierr'    ,cg_ierr )
+
+
          call mpas_pool_get_array(diag_physics,'sigma_deep' ,sigma_deep)
 
          call mpas_pool_get_array(tend_physics,'rqvblten'   ,rqvblten  )
@@ -1171,6 +1198,13 @@
             cin_p(i,j)           = cin(i)
             wlpool_p(i,j)        = wlpool(i)
             lightn_dens_p(i,j)   = lightn_dens(i)
+            dp_dens_p(i,j)       = dp_dens(i)
+            sh_dens_p(i,j)       = sh_dens(i)
+            cg_dens_p(i,j)       = cg_dens(i)
+            dp_ierr_p(i,j)       = dp_ierr(i)
+            sh_ierr_p(i,j)       = sh_ierr(i)
+            cg_ierr_p(i,j)       = cg_ierr(i)
+
             xlat_p(i,j)          = latCell(i) / degrad
             xlon_p(i,j)          = lonCell(i) / degrad
             sigma_deep_p(i,j)    = sigma_deep(i)
@@ -1493,6 +1527,8 @@
  integer,dimension(:),pointer:: k22_shallow,kbcon_shallow,ktop_shallow,ktop_deep
  real(kind=RKIND),dimension(:),pointer  :: nca,cubot,cutop,cuprec,raincv,lightn_dens
  real(kind=RKIND),dimension(:),pointer  :: rainncv,vcpool,sigma_deep,sigma_deep_far
+ real(kind=RKIND),dimension(:),pointer  :: dp_dens,sh_dens,cg_dens
+ real(kind=RKIND),dimension(:),pointer  :: dp_ierr,sh_ierr,cg_ierr
  real(kind=RKIND),dimension(:),pointer  :: xmb_total,xmb_shallow
  real(kind=RKIND),dimension(:,:),pointer:: qc_cu,qi_cu
  real(kind=RKIND),dimension(:,:),pointer:: w0avg
@@ -1573,6 +1609,12 @@
        call mpas_pool_get_array(diag_physics,'v2d1'        ,v2d1       )
        call mpas_pool_get_array(diag_physics,'v2d2'        ,v2d2       )
        call mpas_pool_get_array(diag_physics,'lightn_dens' ,lightn_dens)
+       call mpas_pool_get_array(diag_physics,'dp_dens'     ,dp_dens    )
+       call mpas_pool_get_array(diag_physics,'sh_dens'     ,sh_dens    )
+       call mpas_pool_get_array(diag_physics,'cg_dens'     ,cg_dens    )
+       call mpas_pool_get_array(diag_physics,'dp_ierr'     ,dp_ierr    )
+       call mpas_pool_get_array(diag_physics,'sh_ierr'     ,sh_ierr    )
+       call mpas_pool_get_array(diag_physics,'cg_ierr'     ,cg_ierr    )
        call mpas_pool_get_array(diag_physics,'sigma_deep'  ,sigma_deep )
 
        call mpas_pool_get_array(diag_physics,'rupmfxcu'    ,rupmfxcu   )
