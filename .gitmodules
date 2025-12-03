@@ -16,3 +16,6 @@
 [submodule "src/core_atmosphere/physics/physics_noaa/SMOKE"]
 	path = src/core_atmosphere/physics/physics_noaa/SMOKE
 	url = https://github.com/NOAA-GSL/SMOKE.git
+[submodule "src/core_atmosphere/physics/physics_noaa/C3_v2"]
+	path = src/core_atmosphere/physics/physics_noaa/C3_v2
+	url = https://github.com/haiqinli/C3_v2.git
