@@ -716,8 +716,8 @@ integer,pointer:: index_cnvcf, index_buoyx
  real(kind=RKIND),dimension(:),pointer    :: nifa2d,nwfa2d,nt_c,mu_c
 !TEMPO/NSSL
  character(len=StrKIND),pointer:: nssl_moments
- logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
- logical,pointer:: config_tempo_ml_nc_pbl
+ logical,pointer:: config_tempo_aerosolaware,config_tempo_hailaware
+ logical,pointer:: config_tempo_ml_for_bl_nc
  integer,pointer:: index_qh
  integer,pointer:: index_zrw,index_zgw,index_zhw
  integer,pointer:: index_ns,index_ng,index_nh,index_nccn
@@ -749,7 +749,7 @@ integer,pointer:: index_cnvcf, index_buoyx
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
- call mpas_pool_get_config(configs,'config_tempo_ml_nc_pbl',config_tempo_ml_nc_pbl)
+ call mpas_pool_get_config(configs,'config_tempo_ml_for_bl_nc',config_tempo_ml_for_bl_nc)
 
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
@@ -941,7 +941,7 @@ integer,pointer:: index_cnvcf, index_buoyx
              enddo
              enddo
 
-             if(config_tempo_ml_nc_pbl) then
+             if(config_tempo_ml_for_bl_nc) then
                 call mpas_pool_get_array(diag_physics,'qc_bl',qc_bl)
                 call mpas_pool_get_array(diag_physics,'cldfrac_bl',cldfrac_bl)
                 do j = jts, jte
